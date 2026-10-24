@@ -1,0 +1,394 @@
+{
+ "data": [
+  {
+   "id": 14558127,
+   "name": "Ash Blossom & Joyous Spring",
+   "type": "Tuner Monster",
+   "frameType": "effect",
+   "desc": "When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that effect.",
+   "race": "Zombie",
+   "attribute": "FIRE",
+   "atk": 0,
+   "typeline": [
+    "Zombie",
+    "Tuner",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 14558127,
+     "image_url": "https://images.ygoprodeck.com/images/cards/14558127.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/14558127.jpg"
+    }
+   ],
+   "level": 3,
+   "def": 1800
+  },
+  {
+   "id": 23434538,
+   "name": "Maxx \"C\"",
+   "type": "Effect Monster",
+   "frameType": "effect",
+   "desc": "During either player's turn: You can send this card from your hand to the Graveyard; this turn, each time your opponent Special Summons a monster(s), immediately draw 1 card.",
+   "race": "Insect",
+   "attribute": "EARTH",
+   "atk": 500,
+   "typeline": [
+    "Insect",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 23434538,
+     "image_url": "https://images.ygoprodeck.com/images/cards/23434538.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/23434538.jpg"
+    }
+   ],
+   "level": 2,
+   "def": 200,
+   "banlist_info": {
+    "ban_tcg": "Banned",
+    "ban_ocg": "Limited"
+   }
+  },
+  {
+   "id": 46986414,
+   "name": "Dark Magician",
+   "type": "Normal Monster",
+   "frameType": "normal",
+   "desc": "''The ultimate wizard in terms of attack and defense.''",
+   "race": "Spellcaster",
+   "attribute": "DARK",
+   "atk": 2500,
+   "typeline": [
+    "Spellcaster",
+    "Normal"
+   ],
+   "card_images": [
+    {
+     "id": 46986414,
+     "image_url": "https://images.ygoprodeck.com/images/cards/46986414.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/46986414.jpg"
+    },
+    {
+     "id": 36996508,
+     "image_url": "https://images.ygoprodeck.com/images/cards/36996508.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/36996508.jpg"
+    },
+    {
+     "id": 38033121,
+     "image_url": "https://images.ygoprodeck.com/images/cards/38033121.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/38033121.jpg"
+    }
+   ],
+   "level": 7,
+   "def": 2100,
+   "archetype": "Dark Magician"
+  },
+  {
+   "id": 86066372,
+   "name": "Accesscode Talker",
+   "type": "Link Monster",
+   "frameType": "link",
+   "desc": "2+ Effect Monsters. Your opponent cannot activate cards or effects in response to this card's effect activations.",
+   "race": "Cyberse",
+   "attribute": "DARK",
+   "atk": 2300,
+   "typeline": [
+    "Cyberse",
+    "Link",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 86066372,
+     "image_url": "https://images.ygoprodeck.com/images/cards/86066372.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/86066372.jpg"
+    }
+   ],
+   "linkval": 4,
+   "linkmarkers": [
+    "Top",
+    "Bottom-Left",
+    "Bottom",
+    "Bottom-Right"
+   ]
+  },
+  {
+   "id": 84815190,
+   "name": "Baronne de Fleur",
+   "type": "Synchro Monster",
+   "frameType": "synchro",
+   "desc": "1 Tuner + 1+ non-Tuner monsters. Once per turn, when a card or effect is activated (Quick Effect): You can negate the activation, and if you do, destroy that card.",
+   "race": "Plant",
+   "attribute": "WIND",
+   "atk": 3000,
+   "typeline": [
+    "Plant",
+    "Synchro",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 84815190,
+     "image_url": "https://images.ygoprodeck.com/images/cards/84815190.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/84815190.jpg"
+    }
+   ],
+   "level": 10,
+   "def": 2400
+  },
+  {
+   "id": 90448279,
+   "name": "Divine Arsenal AA-ZEUS - Sky Thunder",
+   "type": "XYZ Monster",
+   "frameType": "xyz",
+   "desc": "2 Level 12 monsters. Once per turn, if an Xyz Monster battled this turn, you can also Xyz Summon this card by using 1 Xyz Monster you control as material.",
+   "race": "Machine",
+   "attribute": "LIGHT",
+   "atk": 3000,
+   "typeline": [
+    "Machine",
+    "Xyz",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 90448279,
+     "image_url": "https://images.ygoprodeck.com/images/cards/90448279.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/90448279.jpg"
+    }
+   ],
+   "level": 12,
+   "def": 3000
+  },
+  {
+   "id": 54757758,
+   "name": "Mudragon of the Swamp",
+   "type": "Fusion Monster",
+   "frameType": "fusion",
+   "desc": "2 monsters with the same Attribute, but different Types. Your opponent cannot target face-up monsters on the field with the same Attribute as this card.",
+   "race": "Wyrm",
+   "attribute": "EARTH",
+   "atk": 2800,
+   "typeline": [
+    "Wyrm",
+    "Fusion",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 54757758,
+     "image_url": "https://images.ygoprodeck.com/images/cards/54757758.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/54757758.jpg"
+    }
+   ],
+   "level": 8,
+   "def": 1600
+  },
+  {
+   "id": 16178681,
+   "name": "Odd-Eyes Pendulum Dragon",
+   "type": "Pendulum Effect Monster",
+   "frameType": "effect_pendulum",
+   "desc": "[ Pendulum Effect ] You can reduce the battle damage you take to 0. [ Monster Effect ] If this card battles an opponent's monster, any battle damage it inflicts is doubled.",
+   "race": "Dragon",
+   "attribute": "DARK",
+   "atk": 2500,
+   "typeline": [
+    "Dragon",
+    "Pendulum",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 16178681,
+     "image_url": "https://images.ygoprodeck.com/images/cards/16178681.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/16178681.jpg"
+    }
+   ],
+   "level": 7,
+   "def": 2000,
+   "archetype": "Odd-Eyes",
+   "scale": 4
+  },
+  {
+   "id": 9674034,
+   "name": "Snake-Eye Ash",
+   "type": "Effect Monster",
+   "frameType": "effect",
+   "desc": "If this card is Normal or Special Summoned: You can add 1 Level 1 FIRE monster from your Deck to your hand.",
+   "race": "Pyro",
+   "attribute": "FIRE",
+   "atk": 800,
+   "typeline": [
+    "Pyro",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 9674034,
+     "image_url": "https://images.ygoprodeck.com/images/cards/9674034.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/9674034.jpg"
+    }
+   ],
+   "level": 1,
+   "def": 1000,
+   "archetype": "Snake-Eye"
+  },
+  {
+   "id": 48452496,
+   "name": "Snake-Eyes Poplar",
+   "type": "Effect Monster",
+   "frameType": "effect",
+   "desc": "If this card is Normal or Special Summoned: You can add 1 \"Snake-Eye\" Spell/Trap from your Deck to your hand.",
+   "race": "Pyro",
+   "attribute": "FIRE",
+   "atk": 1200,
+   "typeline": [
+    "Pyro",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 48452496,
+     "image_url": "https://images.ygoprodeck.com/images/cards/48452496.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/48452496.jpg"
+    }
+   ],
+   "level": 1,
+   "def": 1200,
+   "archetype": "Snake-Eye"
+  },
+  {
+   "id": 27204311,
+   "name": "Nibiru, the Primal Being",
+   "type": "Effect Monster",
+   "frameType": "effect",
+   "desc": "During your opponent's Main Phase, if your opponent Normal or Special Summoned 5 or more monsters this turn (Quick Effect): You can Tribute as many face-up monsters on the field as possible.",
+   "race": "Rock",
+   "attribute": "LIGHT",
+   "atk": 3000,
+   "typeline": [
+    "Rock",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 27204311,
+     "image_url": "https://images.ygoprodeck.com/images/cards/27204311.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/27204311.jpg"
+    }
+   ],
+   "level": 11,
+   "def": 600
+  },
+  {
+   "id": 24224830,
+   "name": "Called by the Grave",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Target 1 monster in your opponent's GY; banish it, and if you do, until the end of the next turn, its effects are negated.",
+   "race": "Quick-Play",
+   "card_images": [
+    {
+     "id": 24224830,
+     "image_url": "https://images.ygoprodeck.com/images/cards/24224830.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/24224830.jpg"
+    }
+   ],
+   "banlist_info": {
+    "ban_tcg": "Limited",
+    "ban_ocg": "Limited"
+   }
+  },
+  {
+   "id": 55144522,
+   "name": "Pot of Greed",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Draw 2 cards.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 55144522,
+     "image_url": "https://images.ygoprodeck.com/images/cards/55144522.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/55144522.jpg"
+    }
+   ],
+   "banlist_info": {
+    "ban_tcg": "Banned",
+    "ban_ocg": "Banned"
+   }
+  },
+  {
+   "id": 25311006,
+   "name": "Triple Tactics Talent",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "If your opponent has activated a monster effect during your Main Phase this turn: Activate 1 of these effects.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 25311006,
+     "image_url": "https://images.ygoprodeck.com/images/cards/25311006.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/25311006.jpg"
+    }
+   ],
+   "banlist_info": {
+    "ban_tcg": "Limited",
+    "ban_ocg": "Semi-Limited"
+   }
+  },
+  {
+   "id": 10045474,
+   "name": "Infinite Impermanence",
+   "type": "Trap Card",
+   "frameType": "trap",
+   "desc": "Target 1 face-up monster your opponent controls; negate its effects (until the end of this turn).",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 10045474,
+     "image_url": "https://images.ygoprodeck.com/images/cards/10045474.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/10045474.jpg"
+    }
+   ]
+  },
+  {
+   "id": 89023486,
+   "name": "Snake-Eye Fire",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Activate this card by Tributing 1 FIRE monster.",
+   "race": "Continuous",
+   "card_images": [
+    {
+     "id": 89023486,
+     "image_url": "https://images.ygoprodeck.com/images/cards/89023486.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/89023486.jpg"
+    }
+   ],
+   "archetype": "Snake-Eye"
+  },
+  {
+   "id": 73915052,
+   "name": "Sheep Token",
+   "type": "Token",
+   "frameType": "token",
+   "desc": "Special Summoned with the effect of \"Scapegoat\".",
+   "race": "Beast",
+   "attribute": "EARTH",
+   "level": 1,
+   "atk": 0,
+   "def": 0,
+   "card_images": [
+    {
+     "id": 73915052,
+     "image_url": "https://images.ygoprodeck.com/images/cards/73915052.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/73915052.jpg"
+    }
+   ]
+  }
+ ]
+}

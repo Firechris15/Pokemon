@@ -1,0 +1,5 @@
+/** Short random id, good enough for locally stored records. */
+export function createId(): string {
+  const random = Math.random().toString(36).slice(2, 10);
+  return `${Date.now().toString(36)}${random}`;
+}
