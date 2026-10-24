@@ -109,6 +109,8 @@ export async function deleteDeck(id: string): Promise<void> {
     await db.runAsync('DELETE FROM decks WHERE id = ?', id);
     await db.runAsync('DELETE FROM deck_card_meta WHERE deck_id = ?', id);
     await db.runAsync('DELETE FROM hand_practice WHERE deck_id = ?', id);
+    // Combos stay usable without their deck.
+    await db.runAsync('UPDATE combos SET deck_id = NULL WHERE deck_id = ?', id);
   });
 }
 

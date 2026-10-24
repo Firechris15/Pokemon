@@ -297,6 +297,113 @@ const YDK = `#created by test
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(SHOTS, '16-hand-draw.png') });
 
+  // ---------------------------------------------------------------- Phase 3: combo trainer
+  const pickerTab = (title) => page.getByTestId('card-picker').getByText(new RegExp(`^${title} \\(`)).click();
+
+  await page.goto(`${BASE}/`);
+  await page.getByTestId('tile-combos').click();
+  await page.getByTestId('new-combo').click();
+  await page.getByTestId('dialog-input').fill('Snake-Eye Test-Combo');
+  await page.getByTestId('dialog-confirm').click();
+  await page.getByTestId('pick-starting-hand').waitFor();
+
+  // Starting hand from the deck
+  await page.getByTestId('pick-starting-hand').click();
+  await pickerTab('Main Deck');
+  await page.getByTestId('picker-card-9674034').locator('[role="button"]').first().click();
+  await page.getByTestId('picker-card-14558127').locator('[role="button"]').first().click();
+  await page.getByTestId('picker-done').click();
+  await page.getByTestId('card-picker').waitFor({ state: 'detached' });
+
+  const addStep = async ({ cardTab, cardId, action, targets, note }) => {
+    await page.getByTestId('add-step').click();
+    await page.getByTestId('step-choose-card').click();
+    await pickerTab(cardTab);
+    await page.getByTestId(`picker-card-${cardId}`).locator('[role="button"]').first().click();
+    await page.getByTestId('card-picker').waitFor({ state: 'detached' });
+    await page.getByTestId(`step-action-${action}`).click();
+    if (targets) {
+      await page.getByTestId('step-choose-targets').click();
+      await pickerTab(targets.tab);
+      for (const id of targets.ids) await page.getByTestId(`picker-card-${id}`).locator('[role="button"]').first().click();
+      await page.getByTestId('picker-done').click();
+      await page.getByTestId('card-picker').waitFor({ state: 'detached' });
+    }
+    if (note) await page.getByTestId('step-note').fill(note);
+    await page.getByTestId('step-save').click();
+    await page.getByTestId('step-editor').waitFor({ state: 'detached' });
+  };
+  await addStep({ cardTab: 'Hand', cardId: 9674034, action: 'normal_summon' });
+  await addStep({ cardTab: 'Feld', cardId: 9674034, action: 'search', targets: { tab: 'Main Deck', ids: [48452496] }, note: 'Ash sucht Poplar.' });
+  await addStep({ cardTab: 'Hand', cardId: 48452496, action: 'special_summon' });
+  await addStep({ cardTab: 'Extra Deck', cardId: 86066372, action: 'link_summon', targets: { tab: 'Feld', ids: [9674034, 48452496] } });
+  assert((await page.locator('[data-testid^="combo-step-"]').count()) === 4, 'four combo steps recorded via the card picker');
+  const finalField = await page.getByTestId('zone-field').innerText();
+  const finalGy = await page.getByTestId('zone-gy').innerText();
+  assert(finalField.includes('Zugangscode-Sprecher') && finalGy.includes('Schlangenaugen-Asche') && finalGy.includes('Schlangenaugen-Pappel'), 'board tracker: link monster on field, materials in GY');
+  await page.getByTestId('endboard-from-field').click();
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: path.join(SHOTS, '17-combo-editor.png') });
+
+  // Multiple choice quiz: answer step 2 wrong on purpose
+  await page.getByTestId('editor-quiz').click();
+  await page.getByTestId('quiz-option-0').waitFor();
+  const expected = [
+    'Normalbeschwörung: Schlangenaugen-Asche',
+    'Suchen: Schlangenaugen-Asche – Sucht: Schlangenaugen-Pappel',
+    'Spezialbeschwörung: Schlangenaugen-Pappel',
+    'Linkbeschwörung: Zugangscode-Sprecher – Materialien: Schlangenaugen-Asche, Schlangenaugen-Pappel',
+  ];
+  for (let i = 0; i < expected.length; i++) {
+    const options = page.locator('[data-testid^="quiz-option-"]');
+    const texts = await options.allInnerTexts();
+    const right = texts.findIndex((t) => t.includes(expected[i]));
+    assert(right >= 0 && texts.length >= 3, `step ${i + 1}: correct answer among ${texts.length} options`);
+    const pick = i === 1 ? texts.findIndex((t, k) => k !== right) : right;
+    if (i === 1) await page.screenshot({ path: path.join(SHOTS, '18-combo-quiz.png') });
+    await options.nth(pick).click();
+    const feedback = await page.getByTestId('quiz-feedback').innerText();
+    if (i === 1) {
+      assert(feedback.includes('Falsch') && feedback.includes('Ash sucht Poplar.'), 'wrong answer marked and explained');
+      await page.screenshot({ path: path.join(SHOTS, '19-combo-feedback.png') });
+    }
+    await page.getByTestId('quiz-next').click();
+  }
+  await page.getByTestId('quiz-summary').getByText(/Nächste Wiederholung: (?!…)/).waitFor();
+  const summary = await page.getByTestId('quiz-summary').innerText();
+  assert(summary.includes('3 von 4 Schritten richtig') && summary.includes('Morgen'), 'summary: 3/4 correct, next review tomorrow – ' + summary.split('\n').slice(0, 3).join(' | '));
+  await page.screenshot({ path: path.join(SHOTS, '20-combo-summary.png') });
+  await page.getByTestId('quiz-done').click();
+
+  // Free quiz: first step by card + action, then give up
+  // quiz-done navigates back asynchronously; let that finish before loading a new URL.
+  await page.waitForURL(/\/combos\/(?!quiz)[^/]+$/);
+  await page.goto(`${BASE}/combos`);
+  await page.locator('[data-testid^="quiz-free-"]').first().click();
+  await page.getByTestId('quiz-card-9674034').locator('[role="button"]').first().click();
+  await page.getByTestId('quiz-action-normal_summon').click();
+  await page.getByTestId('quiz-check').click();
+  assert((await page.getByTestId('quiz-feedback').innerText()).includes('Richtig!'), 'free mode: card + action accepted');
+  await page.getByTestId('quiz-next').click();
+  await page.getByTestId('quiz-card-48452496').locator('[role="button"]').first().click();
+  await page.getByTestId('quiz-action-search').click();
+  await page.getByTestId('quiz-check').click();
+  assert((await page.getByTestId('quiz-feedback').innerText()).includes('Richtige Aktion, falsche Karte'), 'free mode: partial answer explained');
+  await page.getByTestId('quiz-next').click();
+  for (let i = 0; i < 2; i++) {
+    await page.getByTestId('quiz-reveal').click();
+    await page.getByTestId('quiz-next').click();
+  }
+  await page.getByTestId('quiz-summary').getByText(/Nächste Wiederholung: (?!…)/).waitFor();
+  const freeSummary = await page.getByTestId('quiz-summary').innerText();
+  assert(freeSummary.includes('1 von 4') && freeSummary.includes('Min.'), 'failed run is scheduled again within minutes');
+  await page.getByTestId('quiz-done').click();
+  await page.getByTestId('new-combo').waitFor();
+  await page.waitForTimeout(300);
+  const row = await page.locator('[data-testid^="combo-"]').first().innerText();
+  assert(row.includes('2× geübt') && row.includes('1 schwieriger Schritt'), 'combo list shows practice stats and hard steps: ' + row.replace(/\n/g, ' '));
+  await page.screenshot({ path: path.join(SHOTS, '21-combo-list.png') });
+
   // Phone portrait
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await mock.install(phone);

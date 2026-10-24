@@ -98,7 +98,7 @@ export default function ImportDeckScreen() {
         <Button testID="paste-clipboard" label="Aus Zwischenablage" icon="clipboard-outline" onPress={paste} />
       </View>
 
-      <TextField testID="import-text" multiline value={text} onChangeText={setText} placeholder={PLACEHOLDER} autoCapitalize="none" />
+      <TextField testID="import-text" multiline mono value={text} onChangeText={setText} placeholder={PLACEHOLDER} autoCapitalize="none" />
 
       <TextField testID="import-name" icon="albums-outline" value={name} onChangeText={setName} placeholder="Deckname" />
 

@@ -8,9 +8,10 @@ import type { IconName } from './Button';
 export function TextField({
   icon,
   onClear,
+  mono,
   style,
   ...props
-}: TextInputProps & { icon?: IconName; onClear?: () => void }) {
+}: TextInputProps & { icon?: IconName; onClear?: () => void; /** Monospace, taller box for code/list input. */ mono?: boolean }) {
   return (
     <View style={[styles.wrapper, props.multiline && styles.multiline, style]}>
       {icon ? <Ionicons name={icon} size={18} color={colors.textFaint} /> : null}
@@ -18,7 +19,7 @@ export function TextField({
         placeholderTextColor={colors.textFaint}
         autoCorrect={false}
         {...props}
-        style={[styles.input, props.multiline && styles.inputMultiline]}
+        style={[styles.input, props.multiline && styles.inputMultiline, mono && styles.inputMono]}
       />
       {onClear && props.value ? (
         <Pressable accessibilityLabel="Eingabe löschen" onPress={onClear} hitSlop={8}>
@@ -43,5 +44,6 @@ const styles = StyleSheet.create({
   },
   multiline: { alignItems: 'flex-start', paddingVertical: spacing.sm },
   input: { flex: 1, color: colors.text, fontSize: font.body, paddingVertical: 8, outlineStyle: 'none' } as never,
-  inputMultiline: { minHeight: 140, textAlignVertical: 'top', fontFamily: 'monospace', fontSize: font.label },
+  inputMultiline: { minHeight: 72, textAlignVertical: 'top' },
+  inputMono: { minHeight: 140, fontFamily: 'monospace', fontSize: font.label },
 });

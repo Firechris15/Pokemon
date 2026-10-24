@@ -85,4 +85,38 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_hand_practice_deck ON hand_practice(deck_id, created_at);
   `,
+
+  // v3: combo trainer – combo routes, spaced repetition state, quiz attempts
+  `
+  CREATE TABLE combos (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    deck_id TEXT,
+    data TEXT NOT NULL,
+    notes TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE combo_reviews (
+    combo_id TEXT PRIMARY KEY NOT NULL,
+    ease REAL NOT NULL,
+    interval_days REAL NOT NULL,
+    repetitions INTEGER NOT NULL,
+    lapses INTEGER NOT NULL,
+    due_at INTEGER NOT NULL,
+    last_reviewed_at INTEGER,
+    step_errors TEXT NOT NULL DEFAULT '{}'
+  );
+
+  CREATE TABLE combo_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    combo_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    mode TEXT NOT NULL,
+    correct INTEGER NOT NULL,
+    total INTEGER NOT NULL
+  );
+  CREATE INDEX idx_combo_attempts ON combo_attempts(combo_id, created_at);
+  `,
 ];

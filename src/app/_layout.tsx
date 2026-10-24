@@ -7,11 +7,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CardDetailModal } from '@/components/cards/CardDetailModal';
+import { CardPickerModal } from '@/components/cards/CardPickerModal';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { DialogHost } from '@/components/ui/dialogs';
 import { getDb } from '@/db/database';
 import { useCardDb } from '@/features/cards/store';
+import { useCombos } from '@/features/combos/store';
 import { useDecks } from '@/features/decks/store';
 import { useSettings } from '@/features/settings/store';
 import { colors, spacing } from '@/theme';
@@ -32,7 +34,12 @@ const theme = {
 
 async function bootstrap() {
   await getDb();
-  await Promise.all([useSettings.getState().load(), useCardDb.getState().refreshInfo(), useDecks.getState().load()]);
+  await Promise.all([
+    useSettings.getState().load(),
+    useCardDb.getState().refreshInfo(),
+    useDecks.getState().load(),
+    useCombos.getState().load(),
+  ]);
 }
 
 export default function RootLayout() {
@@ -74,9 +81,14 @@ export default function RootLayout() {
                 <Stack.Screen name="decks/import" options={{ title: 'Deck importieren', presentation: 'modal' }} />
                 <Stack.Screen name="hand/index" options={{ title: 'Hand-Trainer' }} />
                 <Stack.Screen name="hand/[deckId]" options={{ title: 'Hand-Trainer' }} />
+                <Stack.Screen name="combos/index" options={{ title: 'Combos' }} />
+                <Stack.Screen name="combos/[id]" options={{ title: 'Combo' }} />
+                <Stack.Screen name="combos/quiz/[id]" options={{ title: 'Quiz' }} />
+                <Stack.Screen name="combos/review" options={{ title: 'Wiederholung' }} />
                 <Stack.Screen name="cards" options={{ title: 'Kartendatenbank' }} />
                 <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
               </Stack>
+              <CardPickerModal />
               <CardDetailModal />
               <DialogHost />
             </>

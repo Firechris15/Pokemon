@@ -33,6 +33,18 @@ Erreichbar über die Kachel **Hand-Trainer** oder im Deck-Editor über das Hand-
 
 Regel für „spielbar“: als Erster mindestens 1 Starter, als Zweiter mindestens 1 Starter oder 1 Board-Breaker.
 
+## Stand: Phase 3 – Combo-Trainer ✅
+
+Erreichbar über die Kachel **Combos**. Die Kachel zeigt an, wie viele Combos zur Wiederholung fällig sind.
+
+| Bereich | Inhalt |
+| --- | --- |
+| Combo erfassen | Name, zugehöriges Deck, Starthand, dann Schritt für Schritt: **Karte + Aktion** (Normal-/Spezial-/Link-/Xyz-/Synchro-/Fusions-/Ritualbeschwörung, Effekt aktivieren, Suchen, Friedhof, Verbannen, Ziehen, Anhängen …), beteiligte Karten (z. B. gesuchte Karte, Materialien) und eine Erklärung. Am Ende das Endboard („Feld übernehmen“ übernimmt den berechneten Stand). |
+| Spielstand | Die App verfolgt automatisch, welche Karten nach jedem Schritt in Hand, Feld, Xyz-Material, Friedhof und Verbannt liegen. Wohin die Karten wandern, ist pro Aktion vorbelegt und pro Schritt änderbar. |
+| Kartenauswahl | Ein gemeinsamer Auswahl-Dialog: Karten aus dem aktuellen Spielstand, Main und Extra Deck oder über die Suche. Mehrfachauswahl für Starthand, Materialien und Endboard. |
+| Quiz | Zeigt den Spielstand und fragt „Was ist der nächste Schritt?“, entweder **Multiple Choice** (passende Ablenker aus derselben Combo und vom Spielfeld) oder **frei** (Karte + Aktion wählen). Fehler werden markiert, die richtige Lösung wird mit deiner Erklärung gezeigt. |
+| Wiederholung | **Spaced Repetition (SM-2)** pro Combo: Fehlerfreie Durchgänge kommen nach 1 Tag, dann 3 Tagen, danach in wachsenden Abständen wieder. Ein misslungener Durchgang kommt nach 10 Minuten wieder, und die Combo erscheint künftig öfter. Pro Schritt wird gezählt, wie oft er falsch war. „Fällige wiederholen“ arbeitet alle fälligen Combos nacheinander ab. |
+
 ## Tech-Stack
 
 - **React Native 0.88 + Expo SDK 58**, TypeScript, Expo Router (dateibasierte Navigation)
@@ -54,9 +66,11 @@ src/
 │  ├─ cards.tsx             Kartendatenbank durchsuchen
 │  ├─ settings.tsx          Kartendaten-Update, Banlist, Sprache, Bild-Cache
 │  ├─ decks/                index (Liste) · [id] (Editor) · import
-│  └─ hand/                 index (Deckwahl) · [deckId] (Starthand, Tags, Statistik, Üben)
+│  ├─ hand/                 index (Deckwahl) · [deckId] (Starthand, Tags, Statistik, Üben)
+│  └─ combos/               index (Liste) · [id] (Editor) · quiz/[id] · review (fällige Combos)
 ├─ components/              Wiederverwendbare UI
-│  ├─ cards/                CardImage, CardTile, CardListItem, CardDetailModal, CardSearchPanel, BanBadge
+│  ├─ cards/                CardImage, CardTile, CardListItem, CardDetailModal, CardSearchPanel, CardPickerModal, BanBadge
+│  ├─ combos/               ComboQuiz, StepEditor, StepRow, ZoneBoard
 │  ├─ handtrainer/          Reiter des Hand-Trainers, Hand-Anzeige, Tag-Chips, Diagramme
 │  └─ ui/                   Button, Chip, TextField, Screen, ProgressBar, Dialoge/Toasts
 ├─ db/                      SQLite-Verbindung und Migrationen
@@ -64,10 +78,11 @@ src/
 │  ├─ cards/                YGOPRODeck-Client, Sync, Repository/Suche, Bild-Cache, Labels (Deutsch)
 │  ├─ decks/                Store, Repository, YDK/ydke-Parser, Import, Export, Validierung, Sortierung
 │  ├─ handtrainer/          Tags, Wahrscheinlichkeit (exakt + Simulation), Hand-Bewertung, Übungsverlauf
+│  ├─ combos/               Combo-Modell, Aktionen, Spielstand-Tracker, Quiz, SM-2-Wiederholung
 │  └─ settings/             Einstellungen
 ├─ lib/                     Rate-Limiter/Queue, Text-Helfer, Base64
 ├─ theme/                   Farben, Abstände, Kartenrahmen-Farben
-└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter, Wahrscheinlichkeiten, Übungsauswertung)
+└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter, Wahrscheinlichkeiten, Übungsauswertung, Combos/SM-2, Migrationen)
 test/
 ├─ fixtures/                Beispiel-Antworten der YGOPRODeck-API
 └─ e2e/                     Web-Smoketest mit Playwright (simulierte API)
@@ -179,7 +194,7 @@ Für statisches Hosting (`npm run export:web` → `dist/`) muss der Webserver di
 | --- | --- |
 | 1 ✅ | Deck-Verwaltung, Kartendaten, Bild-Cache, Karten-Detailansicht |
 | 2 ✅ | Opening-/Hand-Trainer: Starthände, Karten-Tags (Starter, Extender, Handtrap, Brick, Board-Breaker), hypergeometrische Statistik + Simulation, Übungsmodus |
-| 3 | Combo-Trainer: Combo-Routen erfassen, Quiz (Multiple Choice / freie Auswahl), Spaced Repetition |
+| 3 ✅ | Combo-Trainer: Combo-Routen erfassen, Quiz (Multiple Choice / freie Auswahl), Spaced Repetition |
 | 4 | Puzzles: Spielfeld mit allen Zonen, Drag & Drop/Pencil, Puzzle-Editor, Lösungsvergleich, Rating, Tagespuzzle |
 | 5 | Regel-Engine (ocgcore + Lua-Skripte, nativ oder WebAssembly, AGPL beachten) in eigenem Thread, eigene KI in TypeScript (regelbasiert + Monte Carlo), Replays |
 | 6 | Match-Analyse: Replay-Viewer, Statistiken, KI-Kommentar über die Claude API (API-Key im iOS-Schlüsselbund) |
