@@ -62,4 +62,27 @@ export const MIGRATIONS: string[] = [
     updated_at INTEGER NOT NULL
   );
   `,
+
+  // v2: hand trainer – per-deck card tags and practice history
+  `
+  CREATE TABLE deck_card_meta (
+    deck_id TEXT NOT NULL,
+    card_id INTEGER NOT NULL,
+    tags TEXT NOT NULL DEFAULT '[]',
+    starter_rank INTEGER,
+    PRIMARY KEY (deck_id, card_id)
+  );
+
+  CREATE TABLE hand_practice (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    deck_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    going_first INTEGER NOT NULL,
+    hand TEXT NOT NULL,
+    answer_playable INTEGER NOT NULL,
+    answer_card INTEGER,
+    correct INTEGER NOT NULL
+  );
+  CREATE INDEX idx_hand_practice_deck ON hand_practice(deck_id, created_at);
+  `,
 ];

@@ -20,6 +20,19 @@ Zusätzlich läuft sie auf dem iPhone und im Browser (Expo Web).
 | Export | `.ydk` über das Teilen-Menü (Dateien, AirDrop …) und `ydke://`-Link in die Zwischenablage. |
 | iPad | Deck-Editor im Querformat zweispaltig (Deck links, Suche rechts); auf dem iPhone umschaltbar. Apple Pencil funktioniert wie ein Finger. |
 
+## Stand: Phase 2 – Opening-/Hand-Trainer ✅
+
+Erreichbar über die Kachel **Hand-Trainer** oder im Deck-Editor über das Hand-Symbol. Vier Reiter pro Deck:
+
+| Reiter | Inhalt |
+| --- | --- |
+| Starthand | Zufällige Starthand als Erster (5 Karten) oder Zweiter (5 + 1 gezogen), weitere Karten ziehen, Auswertung nach deinen Tags. |
+| Tags | Jede Karte als **Starter, Extender, Handtrap, Brick oder Board-Breaker** markieren (auch mehrfach). Starter-Rangliste per Pfeiltasten. Ein Knopf schlägt bekannte Handtraps und Board-Breaker vor. Tags gelten pro Deck und werden beim Duplizieren mitkopiert. |
+| Statistik | Exakte Werte (multivariat hypergeometrisch) für Erster und Zweiter, zur Kontrolle eine Simulation mit 100.000 Händen: spielbare Hand, mind. 1/2 Starter, Starter + Extender, Handtrap, Starter + Handtrap, Board-Breaker, Bricks. Dazu die Verteilung der Starter-Anzahl, Tag-Übersicht, Einzelkarten-Tabelle (1–3 Kopien) und ein freier Rechner. Kombinationen wie „Starter + Handtrap“ zählen nur mit zwei verschiedenen Karten. |
+| Üben | Die App zeigt eine Hand: „spielbar/nicht spielbar?“, dann „mit welcher Karte startest du?“. Danach die Auswertung mit Erklärung nach deinen Tags und deiner Starter-Rangliste. Sitzungs- und Gesamtquote werden gespeichert. |
+
+Regel für „spielbar“: als Erster mindestens 1 Starter, als Zweiter mindestens 1 Starter oder 1 Board-Breaker.
+
 ## Tech-Stack
 
 - **React Native 0.88 + Expo SDK 58**, TypeScript, Expo Router (dateibasierte Navigation)
@@ -40,18 +53,21 @@ src/
 │  ├─ index.tsx             Startseite mit Kacheln
 │  ├─ cards.tsx             Kartendatenbank durchsuchen
 │  ├─ settings.tsx          Kartendaten-Update, Banlist, Sprache, Bild-Cache
-│  └─ decks/                index (Liste) · [id] (Editor) · import
+│  ├─ decks/                index (Liste) · [id] (Editor) · import
+│  └─ hand/                 index (Deckwahl) · [deckId] (Starthand, Tags, Statistik, Üben)
 ├─ components/              Wiederverwendbare UI
 │  ├─ cards/                CardImage, CardTile, CardListItem, CardDetailModal, CardSearchPanel, BanBadge
+│  ├─ handtrainer/          Reiter des Hand-Trainers, Hand-Anzeige, Tag-Chips, Diagramme
 │  └─ ui/                   Button, Chip, TextField, Screen, ProgressBar, Dialoge/Toasts
 ├─ db/                      SQLite-Verbindung und Migrationen
 ├─ features/                Fachlogik je Bereich (später auch handtrainer/, combos/, puzzles/, engine/, ai/, analysis/)
 │  ├─ cards/                YGOPRODeck-Client, Sync, Repository/Suche, Bild-Cache, Labels (Deutsch)
 │  ├─ decks/                Store, Repository, YDK/ydke-Parser, Import, Export, Validierung, Sortierung
+│  ├─ handtrainer/          Tags, Wahrscheinlichkeit (exakt + Simulation), Hand-Bewertung, Übungsverlauf
 │  └─ settings/             Einstellungen
 ├─ lib/                     Rate-Limiter/Queue, Text-Helfer, Base64
 ├─ theme/                   Farben, Abstände, Kartenrahmen-Farben
-└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter)
+└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter, Wahrscheinlichkeiten, Übungsauswertung)
 test/
 ├─ fixtures/                Beispiel-Antworten der YGOPRODeck-API
 └─ e2e/                     Web-Smoketest mit Playwright (simulierte API)
@@ -162,7 +178,7 @@ Für statisches Hosting (`npm run export:web` → `dist/`) muss der Webserver di
 | Phase | Inhalt |
 | --- | --- |
 | 1 ✅ | Deck-Verwaltung, Kartendaten, Bild-Cache, Karten-Detailansicht |
-| 2 | Opening-/Hand-Trainer: Starthände, Karten-Tags (Starter, Extender, Handtrap, Brick, Board-Breaker), hypergeometrische Statistik + Simulation, Übungsmodus |
+| 2 ✅ | Opening-/Hand-Trainer: Starthände, Karten-Tags (Starter, Extender, Handtrap, Brick, Board-Breaker), hypergeometrische Statistik + Simulation, Übungsmodus |
 | 3 | Combo-Trainer: Combo-Routen erfassen, Quiz (Multiple Choice / freie Auswahl), Spaced Repetition |
 | 4 | Puzzles: Spielfeld mit allen Zonen, Drag & Drop/Pencil, Puzzle-Editor, Lösungsvergleich, Rating, Tagespuzzle |
 | 5 | Regel-Engine (ocgcore + Lua-Skripte, nativ oder WebAssembly, AGPL beachten) in eigenem Thread, eigene KI in TypeScript (regelbasiert + Monte Carlo), Replays |

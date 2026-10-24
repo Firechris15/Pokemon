@@ -14,7 +14,7 @@ import { colors, radius, spacing } from '@/theme';
 const TILES = [
   { key: 'decks', title: 'Decks', subtitle: 'Decks bauen, importieren und prüfen', icon: 'albums', color: '#81b64c', route: '/decks' },
   { key: 'cards', title: 'Karten', subtitle: 'Kartendatenbank durchsuchen und filtern', icon: 'search', color: '#5aa7e0', route: '/cards' },
-  { key: 'hand', title: 'Hand-Trainer', subtitle: 'Starthände üben, Wahrscheinlichkeiten', icon: 'hand-left', color: '#e0b44c', phase: 'Phase 2' },
+  { key: 'hand', title: 'Hand-Trainer', subtitle: 'Starthände üben, Wahrscheinlichkeiten', icon: 'hand-left', color: '#e0b44c', route: '/hand' },
   { key: 'combos', title: 'Combos', subtitle: 'Combo-Routen lernen mit Quiz', icon: 'git-network', color: '#c06bd8', phase: 'Phase 3' },
   { key: 'puzzles', title: 'Puzzles', subtitle: 'Tägliche Puzzles mit Rating', icon: 'extension-puzzle', color: '#e5734b', phase: 'Phase 4' },
   { key: 'duel', title: 'KI-Duell', subtitle: 'Gegen die KI auf dem iPad duellieren', icon: 'hardware-chip', color: '#4bc0b5', phase: 'Phase 5' },

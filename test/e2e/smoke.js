@@ -215,6 +215,88 @@ const YDK = `#created by test
   const expectedCalls = ['/api/v7/cardinfo.php?banlist=ocg', '/api/v7/cardinfo.php?banlist=tcg', '/api/v7/checkDBVer.php'];
   assert(JSON.stringify([...mock.state.api].sort()) === JSON.stringify(expectedCalls), 'second update only checks version + banlists');
 
+  // ---------------------------------------------------------------- Phase 2: hand trainer
+  const choose = (n, k) => {
+    let r = 1;
+    for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i;
+    return r;
+  };
+  const pct = (p) => `${(p * 100).toFixed(1).replace('.', ',')} %`;
+
+  await page.goto(`${BASE}/`);
+  await page.getByTestId('tile-hand').click();
+  await page.locator('[data-testid^="hand-deck-"]').first().click();
+  await page.getByTestId('hand-cards').waitFor();
+  await page.waitForTimeout(500);
+  assert((await page.locator('[data-testid^="hand-card-"]').count()) === 5, 'going first draws 5 cards');
+  await page.getByTestId('going-second').click();
+  await page.waitForTimeout(200);
+  assert((await page.locator('[data-testid^="hand-card-"]').count()) === 6, 'going second shows 6 cards');
+  await page.getByTestId('draw-one').click();
+  assert((await page.locator('[data-testid^="hand-card-"]').count()) === 7, '+1 draw adds a card');
+
+  // Tags
+  await page.getByTestId('hand-tab-tags').click();
+  await page.getByTestId('tag-starter-9674034').click();
+  await page.getByTestId('tag-starter-48452496').click();
+  await page.getByTestId('tag-brick-46986414').click();
+  await page.getByTestId('suggest-tags').click();
+  await page.getByText('Karten getaggt').waitFor();
+  const ranking = await page.getByTestId('starter-ranking').innerText();
+  assert(ranking.indexOf('Schlangenaugen-Asche') < ranking.indexOf('Schlangenaugen-Pappel'), 'starter ranking follows tagging order');
+  await page.getByTestId('starter-up-48452496').click();
+  await page.waitForTimeout(200);
+  const reranked = await page.getByTestId('starter-ranking').innerText();
+  assert(reranked.indexOf('Schlangenaugen-Pappel') < reranked.indexOf('Schlangenaugen-Asche'), 'starter can be moved up');
+  const ashRow = await page.getByTestId('tag-row-14558127').innerText();
+  assert(/Handtrap/.test(ashRow), 'Ash Blossom suggested as handtrap');
+  await page.screenshot({ path: path.join(SHOTS, '13-hand-tags.png') });
+
+  // Tags survive a reload
+  await page.reload();
+  await page.getByTestId('hand-tab-tags').click();
+  await page.getByTestId('starter-ranking').waitFor();
+  assert((await page.getByTestId('starter-ranking').innerText()).includes('Schlangenaugen-Pappel'), 'tags persisted across reload');
+
+  // Statistics: compare the exact value with the closed formula
+  await page.getByTestId('hand-tab-stats').click();
+  await page.getByTestId('stats-table').waitFor();
+  const intro = await page.getByText(/Exakt berechnet/).innerText();
+  const N = Number(intro.match(/(\d+) Karten im Main Deck/)[1]);
+  const starterRow = await page.getByTestId('stat-starter').innerText();
+  const starters = 3; // Snake-Eye Ash x2 + Snake-Eyes Poplar x1
+  const expectFirst = pct(1 - choose(N - starters, 5) / choose(N, 5));
+  const expectSecond = pct(1 - choose(N - starters, 6) / choose(N, 6));
+  assert(starterRow.includes(expectFirst) && starterRow.includes(expectSecond), `starter odds match formula (${expectFirst} / ${expectSecond}, N=${N})`);
+  await page.waitForFunction(() => !document.querySelector('[data-testid="stat-starter"]').innerText.includes('Sim. …'), null, { timeout: 15000 });
+  assert(true, 'simulation finished');
+  const calc = await page.getByTestId('calculator-result').innerText();
+  assert(calc === pct(1 - choose(N - 3, 5) / choose(N, 5)), `calculator default (3 copies, 5 cards) = ${calc}`);
+  await page.screenshot({ path: path.join(SHOTS, '14-hand-stats.png') });
+  await page.mouse.move(600, 500);
+  await page.mouse.wheel(0, 3000);
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(SHOTS, '14b-hand-stats-bottom.png') });
+
+  // Practice
+  await page.getByTestId('hand-tab-practice').click();
+  await page.getByTestId('practice-panel').waitFor();
+  await page.getByTestId('answer-unplayable').click();
+  await page.getByTestId('practice-verdict').waitFor();
+  await page.getByTestId('next-hand').click();
+  await page.getByTestId('answer-playable').click();
+  await page.getByTestId('choose-0').click();
+  await page.getByTestId('answer-submit').click();
+  await page.getByTestId('practice-verdict').waitFor();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(SHOTS, '15-hand-practice.png') });
+  const score = await page.getByTestId('practice-score').innerText();
+  assert(/\/2 richtig/.test(score) && /Gesamt: 2 Hände/.test(score), 'practice answers counted and stored: ' + score.replace(/\n/g, ' '));
+  await page.getByTestId('next-hand').click();
+  await page.getByTestId('hand-tab-draw').click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(SHOTS, '16-hand-draw.png') });
+
   // Phone portrait
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await mock.install(phone);

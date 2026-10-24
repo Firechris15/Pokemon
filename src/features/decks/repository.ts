@@ -105,11 +105,23 @@ export async function saveDeck(deck: Deck): Promise<Deck> {
 
 export async function deleteDeck(id: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync('DELETE FROM decks WHERE id = ?', id);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM decks WHERE id = ?', id);
+    await db.runAsync('DELETE FROM deck_card_meta WHERE deck_id = ?', id);
+    await db.runAsync('DELETE FROM hand_practice WHERE deck_id = ?', id);
+  });
 }
 
+/** Copies the deck including its hand trainer tags (not the practice history). */
 export async function duplicateDeck(id: string): Promise<Deck | null> {
   const source = await getDeck(id);
   if (!source) return null;
-  return createDeck(`${source.name} (Kopie)`, source, source.notes);
+  const copy = await createDeck(`${source.name} (Kopie)`, source, source.notes);
+  const db = await getDb();
+  await db.runAsync(
+    'INSERT INTO deck_card_meta (deck_id, card_id, tags, starter_rank) SELECT ?, card_id, tags, starter_rank FROM deck_card_meta WHERE deck_id = ?',
+    copy.id,
+    id
+  );
+  return copy;
 }

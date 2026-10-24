@@ -72,6 +72,8 @@ export default function RootLayout() {
                 <Stack.Screen name="decks/index" options={{ title: 'Decks' }} />
                 <Stack.Screen name="decks/[id]" options={{ title: 'Deck' }} />
                 <Stack.Screen name="decks/import" options={{ title: 'Deck importieren', presentation: 'modal' }} />
+                <Stack.Screen name="hand/index" options={{ title: 'Hand-Trainer' }} />
+                <Stack.Screen name="hand/[deckId]" options={{ title: 'Hand-Trainer' }} />
                 <Stack.Screen name="cards" options={{ title: 'Kartendatenbank' }} />
                 <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
               </Stack>

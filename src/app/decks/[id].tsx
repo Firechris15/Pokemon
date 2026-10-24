@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -133,6 +133,12 @@ function HeaderActions({ deck }: { deck: Deck }) {
   };
   return (
     <View style={styles.headerActions}>
+      <IconButton
+        icon="hand-left-outline"
+        label="Im Hand-Trainer öffnen"
+        onPress={() => router.push({ pathname: '/hand/[deckId]', params: { deckId: deck.id } })}
+        testID="open-hand-trainer"
+      />
       <IconButton icon="create-outline" label="Umbenennen" onPress={rename} />
       <IconButton icon="link-outline" label="ydke-Link kopieren" onPress={() => copyYdke(deck)} />
       <IconButton icon="share-outline" label="Als .ydk exportieren" onPress={() => exportDeckFile(deck)} testID="export-ydk" />
