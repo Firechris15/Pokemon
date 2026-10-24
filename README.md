@@ -121,6 +121,17 @@ Hinweise:
 - Jede neue Phase bzw. Code-Änderung braucht einen neuen Build (`npm run build:prod` + `npm run submit:ios`).
 - Deine Daten (Decks, Kartendatenbank, Bilder) liegen nur in der App auf dem iPad. Wird die App gelöscht, sind sie weg. Decks lassen sich vorher als `.ydk` exportieren.
 
+### Schnell ausprobieren mit Expo Go (ohne Apple-Entwicklerkonto)
+
+Zum Anschauen reicht die kostenlose App **Expo Go** aus dem App Store. Alle Module von Phase 1 sind darin enthalten. PC und iPad müssen im selben WLAN sein:
+
+```bash
+npm install
+npm run start:go     # = expo start --go, zeigt einen QR-Code
+```
+
+Den QR-Code mit der iPad-Kamera scannen, dann öffnet sich die App in Expo Go. Das funktioniert nur, solange der PC läuft, und Expo Go unterstützt immer nur das aktuelle SDK (hier 58). Für die dauerhafte Offline-Nutzung ist TestFlight der richtige Weg.
+
 ### Optional: Development Build zum Entwickeln
 
 Für Live-Reload während der Entwicklung (dafür muss ein PC im selben WLAN laufen):
