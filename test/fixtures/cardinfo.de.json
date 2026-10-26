@@ -1,0 +1,375 @@
+{
+ "data": [
+  {
+   "id": 14558127,
+   "name": "Aschblüte & Fröhlicher Frühling",
+   "type": "Tuner Monster",
+   "frameType": "effect",
+   "desc": "Wenn eine Karte oder ein Effekt aktiviert wird, der einen dieser Effekte beinhaltet (Schnelleffekt): Du kannst diese Karte abwerfen; annulliere diesen Effekt.",
+   "race": "Zombie",
+   "attribute": "FIRE",
+   "atk": 0,
+   "typeline": [
+    "Zombie",
+    "Tuner",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 14558127,
+     "image_url": "https://images.ygoprodeck.com/images/cards/14558127.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/14558127.jpg"
+    }
+   ],
+   "level": 3,
+   "def": 1800
+  },
+  {
+   "id": 23434538,
+   "name": "Maxx „C“",
+   "type": "Effect Monster",
+   "frameType": "effect",
+   "desc": "Während des Spielzugs eines beliebigen Spielers: Du kannst diese Karte von deiner Hand auf den Friedhof legen; ziehe in diesem Spielzug jedes Mal 1 Karte, wenn dein Gegner Monster als Spezialbeschwörung beschwört.",
+   "race": "Insect",
+   "attribute": "EARTH",
+   "atk": 500,
+   "typeline": [
+    "Insect",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 23434538,
+     "image_url": "https://images.ygoprodeck.com/images/cards/23434538.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/23434538.jpg"
+    }
+   ],
+   "level": 2,
+   "def": 200,
+   "banlist_info": {
+    "ban_tcg": "Banned",
+    "ban_ocg": "Limited"
+   }
+  },
+  {
+   "id": 46986414,
+   "name": "Dunkler Magier",
+   "type": "Normal Monster",
+   "frameType": "normal",
+   "desc": "''Der ultimative Magier in Bezug auf Angriff und Verteidigung.''",
+   "race": "Spellcaster",
+   "attribute": "DARK",
+   "atk": 2500,
+   "typeline": [
+    "Spellcaster",
+    "Normal"
+   ],
+   "card_images": [
+    {
+     "id": 46986414,
+     "image_url": "https://images.ygoprodeck.com/images/cards/46986414.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/46986414.jpg"
+    },
+    {
+     "id": 36996508,
+     "image_url": "https://images.ygoprodeck.com/images/cards/36996508.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/36996508.jpg"
+    },
+    {
+     "id": 38033121,
+     "image_url": "https://images.ygoprodeck.com/images/cards/38033121.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/38033121.jpg"
+    }
+   ],
+   "level": 7,
+   "def": 2100,
+   "archetype": "Dark Magician"
+  },
+  {
+   "id": 86066372,
+   "name": "Zugangscode-Sprecher",
+   "type": "Link Monster",
+   "frameType": "link",
+   "desc": "2+ Effektmonster. Dein Gegner kann keine Karten oder Effekte als Antwort auf die Aktivierung der Effekte dieser Karte aktivieren.",
+   "race": "Cyberse",
+   "attribute": "DARK",
+   "atk": 2300,
+   "typeline": [
+    "Cyberse",
+    "Link",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 86066372,
+     "image_url": "https://images.ygoprodeck.com/images/cards/86066372.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/86066372.jpg"
+    }
+   ],
+   "linkval": 4,
+   "linkmarkers": [
+    "Top",
+    "Bottom-Left",
+    "Bottom",
+    "Bottom-Right"
+   ]
+  },
+  {
+   "id": 84815190,
+   "name": "Baronin de Fleur",
+   "type": "Synchro Monster",
+   "frameType": "synchro",
+   "desc": "1 Empfänger + 1 oder mehr Nicht-Empfänger-Monster. Einmal pro Spielzug, wenn eine Karte oder ein Effekt aktiviert wird (Schnelleffekt): Du kannst die Aktivierung annullieren und falls du dies tust, zerstöre die Karte.",
+   "race": "Plant",
+   "attribute": "WIND",
+   "atk": 3000,
+   "typeline": [
+    "Plant",
+    "Synchro",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 84815190,
+     "image_url": "https://images.ygoprodeck.com/images/cards/84815190.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/84815190.jpg"
+    }
+   ],
+   "level": 10,
+   "def": 2400
+  },
+  {
+   "id": 90448279,
+   "name": "Göttliches Arsenal AA-ZEUS - Himmelsdonner",
+   "type": "XYZ Monster",
+   "frameType": "xyz",
+   "desc": "2 Monster der Stufe 12. Einmal pro Spielzug, falls in diesem Spielzug ein Xyz-Monster gekämpft hat, kannst du diese Karte auch als Xyz-Beschwörung beschwören.",
+   "race": "Machine",
+   "attribute": "LIGHT",
+   "atk": 3000,
+   "typeline": [
+    "Machine",
+    "Xyz",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 90448279,
+     "image_url": "https://images.ygoprodeck.com/images/cards/90448279.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/90448279.jpg"
+    }
+   ],
+   "level": 12,
+   "def": 3000
+  },
+  {
+   "id": 54757758,
+   "name": "Mudrache des Sumpfes",
+   "type": "Fusion Monster",
+   "frameType": "fusion",
+   "desc": "2 Monster mit derselben Eigenschaft, aber unterschiedlichen Typen.",
+   "race": "Wyrm",
+   "attribute": "EARTH",
+   "atk": 2800,
+   "typeline": [
+    "Wyrm",
+    "Fusion",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 54757758,
+     "image_url": "https://images.ygoprodeck.com/images/cards/54757758.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/54757758.jpg"
+    }
+   ],
+   "level": 8,
+   "def": 1600
+  },
+  {
+   "id": 16178681,
+   "name": "Pendeldrache mit Seltsamen Augen",
+   "type": "Pendulum Effect Monster",
+   "frameType": "effect_pendulum",
+   "desc": "[ Pendeleffekt ] Du kannst den Kampfschaden, den du erhältst, auf 0 reduzieren. [ Monstereffekt ] Kämpft diese Karte mit einem Monster des Gegners, wird der Kampfschaden verdoppelt.",
+   "race": "Dragon",
+   "attribute": "DARK",
+   "atk": 2500,
+   "typeline": [
+    "Dragon",
+    "Pendulum",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 16178681,
+     "image_url": "https://images.ygoprodeck.com/images/cards/16178681.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/16178681.jpg"
+    }
+   ],
+   "level": 7,
+   "def": 2000,
+   "archetype": "Odd-Eyes",
+   "scale": 4
+  },
+  {
+   "id": 9674034,
+   "name": "Schlangenaugen-Asche",
+   "type": "Effect Monster",
+   "frameType": "effect",
+   "desc": "Falls diese Karte als Normal- oder Spezialbeschwörung beschworen wird: Du kannst deiner Hand 1 FEUER-Monster der Stufe 1 von deinem Deck hinzufügen.",
+   "race": "Pyro",
+   "attribute": "FIRE",
+   "atk": 800,
+   "typeline": [
+    "Pyro",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 9674034,
+     "image_url": "https://images.ygoprodeck.com/images/cards/9674034.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/9674034.jpg"
+    }
+   ],
+   "level": 1,
+   "def": 1000,
+   "archetype": "Snake-Eye"
+  },
+  {
+   "id": 48452496,
+   "name": "Schlangenaugen-Pappel",
+   "type": "Effect Monster",
+   "frameType": "effect",
+   "desc": "Falls diese Karte als Normal- oder Spezialbeschwörung beschworen wird: Du kannst deiner Hand 1 „Schlangenaugen“-Zauber/Falle hinzufügen.",
+   "race": "Pyro",
+   "attribute": "FIRE",
+   "atk": 1200,
+   "typeline": [
+    "Pyro",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 48452496,
+     "image_url": "https://images.ygoprodeck.com/images/cards/48452496.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/48452496.jpg"
+    }
+   ],
+   "level": 1,
+   "def": 1200,
+   "archetype": "Snake-Eye"
+  },
+  {
+   "id": 27204311,
+   "name": "Nibiru, das Urwesen",
+   "type": "Effect Monster",
+   "frameType": "effect",
+   "desc": "Während der Main Phase deines Gegners, falls dein Gegner in diesem Spielzug 5 oder mehr Monster beschworen hat (Schnelleffekt): Du kannst so viele offene Monster wie möglich als Tribut anbieten.",
+   "race": "Rock",
+   "attribute": "LIGHT",
+   "atk": 3000,
+   "typeline": [
+    "Rock",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 27204311,
+     "image_url": "https://images.ygoprodeck.com/images/cards/27204311.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/27204311.jpg"
+    }
+   ],
+   "level": 11,
+   "def": 600
+  },
+  {
+   "id": 24224830,
+   "name": "Vom Grab gerufen",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Wähle 1 Monster im Friedhof deines Gegners; verbanne es.",
+   "race": "Quick-Play",
+   "card_images": [
+    {
+     "id": 24224830,
+     "image_url": "https://images.ygoprodeck.com/images/cards/24224830.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/24224830.jpg"
+    }
+   ],
+   "banlist_info": {
+    "ban_tcg": "Limited",
+    "ban_ocg": "Limited"
+   }
+  },
+  {
+   "id": 55144522,
+   "name": "Topf der Gier",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Ziehe 2 Karten.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 55144522,
+     "image_url": "https://images.ygoprodeck.com/images/cards/55144522.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/55144522.jpg"
+    }
+   ],
+   "banlist_info": {
+    "ban_tcg": "Banned",
+    "ban_ocg": "Banned"
+   }
+  },
+  {
+   "id": 25311006,
+   "name": "Dreifaches Taktiktalent",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Falls dein Gegner in diesem Spielzug während deiner Main Phase einen Monstereffekt aktiviert hat: Aktiviere 1 dieser Effekte.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 25311006,
+     "image_url": "https://images.ygoprodeck.com/images/cards/25311006.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/25311006.jpg"
+    }
+   ],
+   "banlist_info": {
+    "ban_tcg": "Limited",
+    "ban_ocg": "Semi-Limited"
+   }
+  },
+  {
+   "id": 10045474,
+   "name": "Unendliche Vergänglichkeit",
+   "type": "Trap Card",
+   "frameType": "trap",
+   "desc": "Wähle 1 offenes Monster, das dein Gegner kontrolliert; annulliere seine Effekte.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 10045474,
+     "image_url": "https://images.ygoprodeck.com/images/cards/10045474.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/10045474.jpg"
+    }
+   ]
+  },
+  {
+   "id": 89023486,
+   "name": "Schlangenaugen-Feuer",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Aktiviere diese Karte, indem du 1 FEUER-Monster als Tribut anbietest.",
+   "race": "Continuous",
+   "card_images": [
+    {
+     "id": 89023486,
+     "image_url": "https://images.ygoprodeck.com/images/cards/89023486.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/89023486.jpg"
+    }
+   ],
+   "archetype": "Snake-Eye"
+  }
+ ]
+}

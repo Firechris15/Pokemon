@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "YGO Trainer",
+    "slug": "ygo-trainer",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/images/icon.png",
+    "scheme": "ygotrainer",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#14161a",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.firechris15.ygotrainer",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.firechris15.ygotrainer",
+      "adaptiveIcon": {
+        "backgroundColor": "#14161a",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
+      }
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "name": "YGO Trainer",
+      "backgroundColor": "#14161a"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "headers": {
+            "Cross-Origin-Embedder-Policy": "credentialless",
+            "Cross-Origin-Opener-Policy": "same-origin"
+          }
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#14161a",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      "expo-sqlite",
+      "expo-dev-client"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
