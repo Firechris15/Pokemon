@@ -6,6 +6,7 @@ Zusätzlich läuft sie auf dem iPhone und im Browser (Expo Web).
 
 > Nur für die private Nutzung. Kartendaten und -bilder stammen von der [YGOPRODeck-API](https://ygoprodeck.com/api-guide/).
 > Yu-Gi-Oh! ist eine Marke von Konami, Kartenbilder sind urheberrechtlich geschützt. Die App wird **nicht** im App Store veröffentlicht.
+> Die Regel-Engine (ocgcore, Kartenskripte) stammt von [Project Ignis/EDOPro](https://github.com/ProjectIgnis) und steht unter der AGPL-3.0, deshalb auch dieses Projekt (siehe [Lizenz](#lizenz-agpl-30)).
 
 ## Stand: Phase 1 – Deck-Verwaltung ✅
 
@@ -61,15 +62,55 @@ Erreichbar über die Kachel **Puzzles**. Die Kachel zeigt an, wenn das Tagespuzz
 | Teilen | Puzzle-Code kopieren (Text, z. B. per Nachricht) und auf einem anderen Gerät über „Code einfügen“ importieren. |
 | Beispiele | Fünf Beispiel-Puzzles: Raigeki-OTK, Fusion, Spiegelkraft umgehen, Sinneswandel (zwei Lösungen) und Ash Blossom umgehen. |
 
-Grenzen bis Phase 5: Das Spielfeld kennt die Kartentexte nicht. Es prüft keine Regeln (z. B. Beschwörungsbedingungen oder Effekte), sondern nur, ob deine Züge zur gespeicherten Lösung passen. Die Prüfung über die Regel-Engine kommt mit Phase 5.
+Der Lösungsabgleich prüft keine Regeln (z. B. Beschwörungsbedingungen oder Effekte), sondern nur, ob deine Züge zur gespeicherten Lösung passen. Mit **„Mit echten Regeln spielen“** lässt sich dieselbe Ausgangslage seit Phase 5 frei mit der Regel-Engine spielen (siehe unten).
+
+## Stand: Phase 5 – KI-Duell mit Regel-Engine ✅
+
+Erreichbar über die Kachel **KI-Duell**. Jede Aktion prüft die echte Regel-Engine von EDOPro; die KI läuft komplett auf dem Gerät.
+
+| Bereich | Inhalt |
+| --- | --- |
+| Duell | Dein Deck gegen ein Deck der KI (eigene Decks oder die mitgelieferten Decks „Klassik: Magier“ und „Klassik: Drachen“). Wähle die KI-Stärke und wer beginnt (Zufall, du, KI). Es gelten die aktuellen Master-Regeln (MR5) mit 8000 LP. |
+| Bedienung | Dasselbe Spielfeld wie bei den Puzzles. Eine Karte **antippen** zeigt nur die Aktionen, die nach den Regeln gerade erlaubt sind (beschwören, setzen, aktivieren, Position ändern, angreifen). **Ziehen** auf eine Zone wählt Aktion und Zone in einem Schritt, auf ein gegnerisches Monster oder die Hand des Gegners wird angegriffen. Ziele, Kosten, Materialien, Ja/Nein-Fragen, Positionen, Zahlen und Kartennamen fragt die Engine über Dialoge ab. Phasen wechseln über die Knöpfe rechts. |
+| Ketten | Wie in EDOPro fragt die App nur, wenn eine Karte auf ein Ereignis reagieren kann (z. B. Ash Blossom auf eine Suche). Mit „bei jeder Gelegenheit fragen“ lassen sich auch schnelle Zauber/Fallen zu beliebigen Zeitpunkten aktivieren. |
+| Protokoll | Alle Ereignisse auf Deutsch (Ziehen, Beschwörungen, Ketten, Annullierungen, Angriffe, Schaden). Gezogene und gesetzte Karten des Gegners bleiben verborgen. |
+| KI Stufe 1 | Regelbasiert: beschwört die stärksten Monster, aktiviert Effekte, setzt Fallen, greift an, wenn es sich lohnt, und setzt Handtraps auf passende Auslöser ein. |
+| KI Stufe 2 | Monte-Carlo-Suche (UCB1): Bei jeder Hauptphasen- und Kampfentscheidung spielt die KI die erlaubten Züge in Kopien des Duells bis zum Zugende durch (Stufe 1 als Spielweise), bewertet LP, Feld und Karten und wählt den besten Zug. Sie denkt dafür bis zu 1,5 Sekunden nach. Findet z. B. tödliche Züge wie Raigeki + Angriff. |
+| Replays | Jedes Duell wird mit dem vollständigen Aktionsprotokoll lokal gespeichert (Startwert, Decks und alle Antworten an die Engine, damit lässt es sich exakt nachspielen). Liste und Protokoll unter **Replays**; der Replay-Viewer mit Spielfeld kommt mit Phase 6. |
+| Puzzles mit Regeln | Im Puzzle **„Mit echten Regeln spielen“**: Die Ausgangslage wird als EDOPro-Puzzle-Skript an die Engine übergeben (inkl. Xyz-Material und Extra-Monster-Zonen). Die KI spielt die Karten des Gegners (z. B. Ash Blossom). Gelöst ist das Puzzle, wenn der Gegner in diesem Zug auf 0 LP fällt. |
+
+### Regel-Engine: WebAssembly statt nativem C++
+
+Die Engine ist **ocgcore**, der Regelkern von EDOPro (Project Ignis), dazu die offiziellen **Lua-Kartenskripte**. Eingebunden ist sie als **WebAssembly** über das Paket `ocgcore-wasm`, nicht als natives C++-Modul:
+
+- **Ein Build für alle Plattformen.** Derselbe Bundle (`scripts/build-engine.mjs` → `public/engine/engine.js`, ca. 1,3 MB inkl. WebAssembly) läuft im Browser in einem **Web Worker** und auf dem iPad in einer unsichtbaren **WebView** (`react-native-webview`). Hermes, die JavaScript-Engine von React Native, kann kein WebAssembly, die WebView (WKWebView) schon.
+- **Eigener Thread.** Worker bzw. WebView laufen getrennt vom UI-Thread; die App schickt nur JSON-Nachrichten (`src/features/engine/types.ts`). Auch die KI rechnet dort, das Spielfeld bleibt flüssig.
+- **Kein eigener C++-Build.** Ein natives Modul müsste ocgcore und Lua mit Xcode für iOS kompilieren (ohne Mac nur über EAS, schwer zu testen) und bräuchte zusätzlich eine Web-Variante. WebAssembly funktioniert ohne native Änderungen, sogar in Expo Go.
+- **Nachteil:** etwas langsamer als nativ. Für ein Duell und die Suche der KI reicht es (eine Simulation dauert wenige Millisekunden).
+
+Der Kern ist **deterministisch**: Startwert + Decks + Liste aller Antworten ergeben immer dasselbe Duell. Darauf beruhen Replays und die KI-Suche (die eine Kopie des Duells durch erneutes Abspielen erstellt).
+
+### Lizenz (AGPL-3.0)
+
+ocgcore, die Kartenskripte (CardScripts) und die Regel-Datenbank (BabelCDB) von Project Ignis stehen unter der **GNU AGPL-3.0**. Weil die App die Engine mitliefert und die Skripte ausführt, steht dieses Projekt ebenfalls unter der **AGPL-3.0-or-later** (`LICENSE`). Der Quellcode ist in diesem Repository öffentlich; ein Hinweis steht in der App unter Einstellungen → Regel-Engine. Das Paket `ocgcore-wasm` selbst steht unter MIT. WindBot (die KI von EDOPro) wird nicht verwendet; die KI ist eine eigene Implementierung in TypeScript.
+
+### Daten und Offline-Betrieb
+
+- **Regel-Datenbank** (`cards.cdb` aus BabelCDB, ca. 8 MB) und **Systemtexte** (`strings.conf`) werden beim ersten Duell oder auf Knopfdruck geladen und in SQLite gespeichert.
+- **Kartenskripte** lädt die App nur für die Karten der beiden Decks (inkl. Skripte, die diese Skripte nachladen) und speichert sie ebenfalls. Danach funktioniert das Duell **offline**. Nur für neue Karten in einem Deck braucht es einmal Internet.
+- Aktualisieren unter **Einstellungen → Regel-Engine** (Datenbank und alle gespeicherten Skripte, z. B. nach neuen Rulings oder Karten).
+- Fehlt für eine Karte ein Skript (z. B. ganz neue Karten), zeigt das Duell einen Hinweis; die Karte hat dann keine Effekte.
+
+Grenzen: Die Kartennamen und -texte im Duell kommen aus der YGOPRODeck-Datenbank der App; die Effekttexte in den Aktionsmenüs sind die (englischen) Texte aus EDOPro. Die KI spielt solide, aber nicht auf Turnierniveau: Stufe 2 schaut nur bis zum Ende des eigenen Zugs voraus.
 
 ## Tech-Stack
 
 - **React Native 0.88 + Expo SDK 58**, TypeScript, Expo Router (dateibasierte Navigation)
-- **Expo Development Build** (`expo-dev-client`) statt Expo Go, damit später native Module (Regel-Engine) möglich sind
+- **Expo Development Build** (`expo-dev-client`) statt Expo Go, damit später native Module möglich sind
 - **Zustand** für den State, **expo-sqlite** für alle lokalen Daten (auf iOS eine Datei, im Browser OPFS)
 - **expo-file-system** für den Bild-Cache, **expo-image** für die Anzeige
 - **react-native-gesture-handler 3** und **Reanimated 4** für Gesten (Wischen in der Detailansicht, Drag & Drop auf dem Spielfeld, Trefferprüfung auf dem UI-Thread)
+- **ocgcore** (EDOPro-Regelkern) als **WebAssembly** (`ocgcore-wasm`) im Web Worker bzw. in einer unsichtbaren WebView (`react-native-webview`), gebündelt mit **esbuild**
 - **EAS Build + EAS Submit** für iOS-Builds in der Cloud und die Installation über TestFlight, ohne Mac
 
 ## Ordnerstruktur
@@ -84,32 +125,41 @@ src/
 │  ├─ _layout.tsx           Root: DB-Initialisierung, Theme, globale Karten-Detailansicht und Dialoge
 │  ├─ index.tsx             Startseite mit Kacheln
 │  ├─ cards.tsx             Kartendatenbank durchsuchen
-│  ├─ settings.tsx          Kartendaten-Update, Banlist, Sprache, Bild-Cache
+│  ├─ settings.tsx          Kartendaten-Update, Banlist, Sprache, Bild-Cache, Regel-Engine, Lizenzen
 │  ├─ decks/                index (Liste) · [id] (Editor) · import
 │  ├─ hand/                 index (Deckwahl) · [deckId] (Starthand, Tags, Statistik, Üben)
 │  ├─ combos/               index (Liste) · [id] (Editor) · quiz/[id] · review (fällige Combos)
-│  └─ puzzles/              index (Rating, Tagespuzzle, Liste) · [id] (Lösen) · edit/[id] (Editor)
+│  ├─ puzzles/              index (Rating, Tagespuzzle, Liste) · [id] (Lösen) · edit/[id] (Editor)
+│  ├─ duel/                 index (Duell einrichten) · play (Duell gegen die KI)
+│  └─ replays/              index (Liste) · [id] (Protokoll)
 ├─ components/              Wiederverwendbare UI
 │  ├─ cards/                CardImage, CardTile, CardListItem, CardDetailModal, CardSearchPanel, CardPickerModal, BanBadge
 │  ├─ combos/               ComboQuiz, StepEditor, StepRow, ZoneBoard
 │  ├─ duel/                 DuelBoard (Spielfeld, Drag & Drop), Layout/Trefferprüfung, Stapel-/Kartenauswahl, Aktions-Hook
+│  ├─ engine/               Status der Regel-Daten, Dialoge für Anfragen der Engine
 │  ├─ handtrainer/          Reiter des Hand-Trainers, Hand-Anzeige, Tag-Chips, Diagramme
 │  └─ ui/                   Button, Chip, TextField, Screen, ProgressBar, Dialoge/Toasts
 ├─ db/                      SQLite-Verbindung und Migrationen
-├─ features/                Fachlogik je Bereich (später auch engine/, ai/, analysis/)
+├─ features/                Fachlogik je Bereich (später auch analysis/)
 │  ├─ cards/                YGOPRODeck-Client, Sync, Repository/Suche, Bild-Cache, Labels (Deutsch)
 │  ├─ decks/                Store, Repository, YDK/ydke-Parser, Import, Export, Validierung, Sortierung
 │  ├─ handtrainer/          Tags, Wahrscheinlichkeit (exakt + Simulation), Hand-Bewertung, Übungsverlauf
 │  ├─ combos/               Combo-Modell, Aktionen, Spielstand-Tracker, Quiz, SM-2-Wiederholung
 │  ├─ duel/                 Duell-Zustand (alle Zonen), Züge, Kampfberechnung, Zug-Builder, Aktionen je Zone
 │  ├─ puzzles/              Lösungsabgleich, Elo-Rating, Tagespuzzle/Serie, Beispiele, Puzzle-Codes, Repository/Store
+│  ├─ engine/               Regel-Engine: core/ (Duell-Sitzung um ocgcore, Puzzle-Skripte), worker/ (läuft im Worker/WebView),
+│  │                        Host (Web Worker bzw. WebView), Kartendaten/Skripte laden, Duell-Store, Spielfeld-Abbildung, Protokoll
+│  ├─ ai/                   KI: Stufe 1 (Regeln) und Stufe 2 (Monte-Carlo-Suche)
+│  ├─ replays/              Replays speichern und anzeigen
 │  └─ settings/             Einstellungen
 ├─ lib/                     Rate-Limiter/Queue, Text-Helfer, Base64
 ├─ theme/                   Farben, Abstände, Kartenrahmen-Farben
-└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter, Wahrscheinlichkeiten, Übungsauswertung, Combos/SM-2, Duell/Puzzles, Migrationen)
+└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter, Wahrscheinlichkeiten, Übungsauswertung, Combos/SM-2, Duell/Puzzles, Engine-Daten/Spielfeld/Protokoll, Migrationen)
+scripts/                    Engine-Bundle bauen, Engine-Tests ausführen, Engine-Testdaten erzeugen
 test/
-├─ fixtures/                Beispiel-Antworten der YGOPRODeck-API (inkl. Karten der Beispiel-Puzzles)
-└─ e2e/                     Web-Smoketest mit Playwright (simulierte API)
+├─ fixtures/                Beispiel-Antworten der YGOPRODeck-API (inkl. Karten der Beispiel-Puzzles); engine/: kleine Regel-Datenbank und Skripte
+├─ engine/                  Tests der echten Engine (Node): Duelle, Puzzles, KI, Replays
+└─ e2e/                     Web-Smoketest mit Playwright (simulierte APIs, inkl. KI-Duell und Puzzles mit Regeln)
 ```
 
 Plattformspezifischer Code liegt in `*.web.ts`-Dateien (z. B. `imageBackend.web.ts`: Cache Storage statt Dateisystem).
@@ -151,6 +201,7 @@ git clone <repo-url> && cd <repo>
 npm install
 npm run web          # App im Browser starten (http://localhost:8081)
 npm test             # Unit-Tests
+npm run test:engine  # Tests mit der echten Regel-Engine
 npm run typecheck    # TypeScript
 npm run lint         # ESLint
 npm run test:e2e     # Web-Smoketest (braucht Playwright: npx playwright install chromium)
@@ -247,5 +298,5 @@ Statisch gebaut wird mit `npm run export:web` (→ `dist/`). Online steht die We
 | 2 ✅ | Opening-/Hand-Trainer: Starthände, Karten-Tags (Starter, Extender, Handtrap, Brick, Board-Breaker), hypergeometrische Statistik + Simulation, Übungsmodus |
 | 3 ✅ | Combo-Trainer: Combo-Routen erfassen, Quiz (Multiple Choice / freie Auswahl), Spaced Repetition |
 | 4 ✅ | Puzzles: Spielfeld mit allen Zonen, Drag & Drop/Pencil, Puzzle-Editor, Lösungsvergleich, Rating, Tagespuzzle |
-| 5 | Regel-Engine (ocgcore + Lua-Skripte, nativ oder WebAssembly, AGPL beachten) in eigenem Thread, eigene KI in TypeScript (regelbasiert + Monte Carlo), Replays |
+| 5 ✅ | Regel-Engine (ocgcore + Lua-Skripte als WebAssembly, AGPL) in eigenem Thread, KI in TypeScript (Stufe 1 regelbasiert, Stufe 2 Monte-Carlo-Suche), Gegner-Decks, Replays, Puzzles mit echten Regeln |
 | 6 | Match-Analyse: Replay-Viewer, Statistiken, KI-Kommentar über die Claude API (API-Key im iOS-Schlüsselbund) |

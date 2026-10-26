@@ -51,7 +51,13 @@ const YDK = `#created by test
   await mock.install(context);
   const page = await context.newPage();
   const errors = [];
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(`[console] ${m.text()}`); });
+  // Scripts that do not exist upstream (e.g. Normal Monsters) answer 404 – expected; any other 404 is an error.
+  page.on('console', (m) => {
+    if (m.type() === 'error' && !m.text().startsWith('Failed to load resource: the server responded with a status of 404')) errors.push(`[console] ${m.text()}`);
+  });
+  page.on('response', (r) => {
+    if (r.status() === 404 && !r.url().startsWith('https://raw.githubusercontent.com/ProjectIgnis/CardScripts/')) errors.push(`[404] ${r.url()}`);
+  });
   page.on('pageerror', (e) => errors.push(`[pageerror] ${e.message}`));
 
   await page.goto(`${BASE}/`);
@@ -109,11 +115,12 @@ const YDK = `#created by test
   await page.getByTestId('filter-frame-extra').click();
   await page.waitForTimeout(500);
   const extraResults = await page.locator('[data-testid^="search-result-"]').count();
-  assert(extraResults === 5, `extra deck filter shows 5 cards (got ${extraResults})`);
+  // 5 sample cards + 5 from the preset decks (Decode Talker, Linkuriboh, three Blue-Eyes/XYZ fusions).
+  assert(extraResults === 10, `extra deck filter shows 10 cards (got ${extraResults})`);
   await page.getByTestId('filter-attribute-DARK').click();
   await page.waitForTimeout(500);
   const darkExtra = await page.locator('[data-testid^="search-result-"]').count();
-  assert(darkExtra === 1, `extra + DARK shows 1 card (got ${darkExtra})`);
+  assert(darkExtra === 3, `extra + DARK shows 3 cards (got ${darkExtra})`);
   await page.getByTestId('archetype-input').fill('snake');
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(SHOTS, '05-filters.png') });
@@ -583,6 +590,92 @@ const YDK = `#created by test
   const rows = await page.locator('[data-testid^="puzzle-"]').filter({ hasText: 'Mein Puzzle' }).filter({ hasText: 'Rating' }).allInnerTexts();
   assert(rows.length === 2 && rows.some((r) => r.includes('Importiert')), 'imported puzzle listed next to the original');
 
+  // ---- Phase 5: duel against the AI with the rules engine ---------------------------
+  const passChains = async () => {
+    // Optional chain chances (e.g. a hand trap) – pass them in this test.
+    if (await page.getByTestId('chain-pass').count()) await page.getByTestId('chain-pass').click();
+    if (await page.getByTestId('prompt-no').count()) await page.getByTestId('prompt-no').click();
+  };
+  await page.goto(`${BASE}/`);
+  await page.getByTestId('tile-duel').click();
+  await page.getByTestId('duel-start').waitFor();
+  await page.screenshot({ path: path.join(SHOTS, '26-duel-setup.png') });
+  await page.getByTestId('first-me').click();
+  await page.getByTestId('duel-start').click();
+  await page.getByTestId('duel-board').waitFor({ timeout: 60000 });
+  await page.getByTestId('duel-turn').getByText(/Zug 1 · Du/).waitFor({ timeout: 30000 });
+  assert(mock.state.github.some((u) => u.endsWith('/BabelCDB/master/cards.cdb')), 'rules database loaded from EDOPro (BabelCDB)');
+  assert(mock.state.github.some((u) => u.endsWith('/CardScripts/master/utility.lua')), 'card scripts loaded from EDOPro (CardScripts)');
+  assert((await page.locator('[data-testid^="hand-me-"]').count()) === 5, 'opening hand: 5 cards');
+  assert((await page.locator('[data-testid^="hand-opp-"]').count()) === 5, 'the AI hand is shown face down');
+  const myHand = page.locator('[data-testid^="hand-me-"]');
+  let played = false;
+  for (let i = 0; i < 5 && !played; i++) {
+    await myHand.nth(i).click();
+    await page.waitForTimeout(300);
+    for (const kind of ['summon', 'mset', 'sset']) {
+      const action = page.getByTestId(`engine-action-${kind}`);
+      if (!played && (await action.count())) {
+        await action.click();
+        played = true;
+      }
+    }
+    if (!played) {
+      if (await page.getByTestId('dialog-cancel').count()) await page.getByTestId('dialog-cancel').click();
+      if (await page.getByTestId('card-detail').count()) await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+    }
+  }
+  assert(played, 'a card from the hand was summoned or set via the engine');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(SHOTS, '27-duel-my-turn.png') });
+  await page.getByTestId('phase-to-ep').click();
+  for (let i = 0; i < 180 && !(await page.getByTestId('duel-turn').innerText()).startsWith('Zug 3 · Du'); i++) {
+    if (await page.getByTestId('duel-result').count()) break;
+    await passChains();
+    await page.waitForTimeout(500);
+  }
+  const duelLog = await page.getByTestId('duel-log').innerText();
+  assert(/ZUG 2: ZUG DES GEGNERS/i.test(duelLog), 'the AI played its turn');
+  await page.screenshot({ path: path.join(SHOTS, '28-duel-after-ai.png') });
+  if (!(await page.getByTestId('duel-result').count())) {
+    await page.getByTestId('duel-surrender').click();
+    await page.getByTestId('dialog-confirm').click();
+  }
+  await page.getByTestId('duel-result').waitFor({ timeout: 30000 });
+  assert(/Verloren|Gewonnen/.test(await page.getByTestId('duel-result').innerText()), 'the duel ended');
+  await page.waitForTimeout(500);
+  await page.goto(`${BASE}/replays`);
+  await page.locator('[data-testid^="replay-"]').first().click();
+  await page.getByTestId('replay-log').waitFor();
+  assert(/ZUG 1/i.test(await page.getByTestId('replay-log').innerText()), 'replay stored with the full action log');
+
+  // Puzzles with the real rules: Raigeki lethal, and the AI answers with Ash Blossom.
+  await page.goto(`${BASE}/puzzles/sample-raigeki`);
+  await page.getByTestId('puzzle-engine').click();
+  await page.getByTestId('duel-board').waitFor({ timeout: 60000 });
+  await page.getByTestId('hand-me-12580477').waitFor();
+  await page.waitForTimeout(500);
+  await page.getByTestId('hand-me-12580477').click();
+  await page.getByTestId('engine-action-activate').click();
+  await page.getByTestId('phase-to-bp').waitFor({ timeout: 30000 });
+  await page.getByTestId('phase-to-bp').click();
+  await page.waitForTimeout(600);
+  await drag('duel-card-89631139', 'zone-opp-hand');
+  await page.getByTestId('duel-result').waitFor({ timeout: 30000 });
+  assert((await page.getByTestId('duel-result').innerText()).includes('Puzzle gelöst'), 'puzzle solved under the real rules');
+  await page.screenshot({ path: path.join(SHOTS, '29-puzzle-rules.png') });
+  await page.waitForTimeout(500);
+  await page.goto(`${BASE}/puzzles/sample-ash`);
+  await page.getByTestId('puzzle-engine').click();
+  await page.getByTestId('duel-board').waitFor({ timeout: 60000 });
+  await page.getByTestId('hand-me-32807846').waitFor();
+  await page.waitForTimeout(500);
+  await page.getByTestId('hand-me-32807846').click();
+  await page.getByTestId('engine-action-activate').click();
+  await page.getByTestId('duel-log').getByText(/annulliert/).waitFor({ timeout: 30000 });
+  assert((await page.getByTestId('duel-log').innerText()).includes('Gegner aktiviert Aschblüte'), 'the AI answers the search with Ash Blossom');
+
   // Phone portrait
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await mock.install(phone);
@@ -595,6 +688,7 @@ const YDK = `#created by test
   await p2.getByTestId('card-search-results').waitFor();
   await p2.waitForTimeout(800);
   await p2.screenshot({ path: path.join(SHOTS, '11-phone-cards.png') });
+  await p2.getByTestId('card-search-input').fill('zugangscode');
   await p2.getByTestId('search-result-86066372').click();
   await p2.getByTestId('card-detail').waitFor();
   await p2.waitForTimeout(800);
