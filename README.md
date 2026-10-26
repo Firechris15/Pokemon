@@ -45,13 +45,31 @@ Erreichbar über die Kachel **Combos**. Die Kachel zeigt an, wie viele Combos zu
 | Quiz | Zeigt den Spielstand und fragt „Was ist der nächste Schritt?“, entweder **Multiple Choice** (passende Ablenker aus derselben Combo und vom Spielfeld) oder **frei** (Karte + Aktion wählen). Fehler werden markiert, die richtige Lösung wird mit deiner Erklärung gezeigt. |
 | Wiederholung | **Spaced Repetition (SM-2)** pro Combo: Fehlerfreie Durchgänge kommen nach 1 Tag, dann 3 Tagen, danach in wachsenden Abständen wieder. Ein misslungener Durchgang kommt nach 10 Minuten wieder, und die Combo erscheint künftig öfter. Pro Schritt wird gezählt, wie oft er falsch war. „Fällige wiederholen“ arbeitet alle fälligen Combos nacheinander ab. |
 
+## Stand: Phase 4 – Puzzles ✅
+
+Erreichbar über die Kachel **Puzzles**. Die Kachel zeigt an, wenn das Tagespuzzle noch offen ist.
+
+| Bereich | Inhalt |
+| --- | --- |
+| Spielfeld | Alle Zonen beider Spieler wie auf der Spielmatte: Monster-, Zauber-/Fallen-, Extra-Monster- und Spielfeldzonen, Friedhof, Verbannt, Deck, Extra Deck, Hände und LP. Die Seite des Gegners ist gespiegelt. Verteidigungsposition wird quer gezeigt, verdeckte Karten als Rückseite (eigene halbtransparent), dazu ATK/DEF und Xyz-Material. |
+| Bedienung | **Drag & Drop** mit Finger, Maus oder **Apple Pencil**: Die Zielzone leuchtet auf, danach erscheinen die passenden Aktionen (z. B. Monster aus der Hand auf eine Monsterzone → Normal-/Tribut-/Spezialbeschwörung oder Setzen; Monster auf ein gegnerisches Monster → Angriff; auf die Hand des Gegners → direkter Angriff). **Antippen** öffnet das Aktionsmenü, **lange drücken** die große Kartenansicht. Friedhof, Deck usw. antippen zeigt die Karten des Stapels. Materialien, Tribute und Ziele werden in einer Kartenauswahl gewählt. Kampfschaden wird mit ATK/DEF berechnet. |
+| Lösen | Wie bei Chess.com: Jeder Zug wird mit den gespeicherten Lösungen verglichen. Falsche Züge werden nicht ausgeführt („Nicht der gesuchte Zug“). Antworten des Gegners (z. B. Ash Blossom) und Effektauflösungen laufen automatisch ab und werden erklärt. Dazu **Tipp** (erst die Karte, dann der ganze Zug), **Lösung zeigen** (Zug für Zug) und am Ende die Erklärung. |
+| Mehrere Lösungen | Ein Puzzle kann mehrere Lösungen haben; die App folgt der Lösung, die du spielst. Züge, die als „Frei“ markiert sind (z. B. mehrere Angriffe), dürfen in beliebiger Reihenfolge kommen. |
+| Rating | Elo-Wertung wie bei Chess.com-Puzzles: Startwert 1000. Gewertet wird nur der **erste Versuch**; der erste Fehler, Tipp oder „Lösung zeigen“ zählt als verloren. Die Puzzles haben ebenfalls ein Rating, das sich mit den Ergebnissen verschiebt. Fünf Schwierigkeitsstufen (Anfänger 600 … Experte 1800). Eigene Puzzles sind ungewertet (du kennst die Lösung). |
+| Tagespuzzle | Jeden Tag ein Puzzle, bevorzugt eines, das du noch nicht gelöst hast. Gelöste Tagespuzzles in Folge ergeben die **Serie**. |
+| Editor | Neues Puzzle → **Aufbau**: leere Zone oder Hand antippen und Karten über die Suche hinzufügen, Karten ziehen, antippen für Position, offen/verdeckt, „dem Spieler zeigen“ (Hand/verdeckte Karten des Gegners), ATK/DEF ändern oder Entfernen; dazu Titel, Aufgabe (z. B. „OTK“, „Durch Nibiru spielen“, „Ash Blossom umgehen“), Ausgangslage, Erklärung, Ziel (Gegner auf 0 LP oder komplette Zugfolge), Schwierigkeit und LP. → **Lösungen**: die Lösung auf dem Feld vorspielen. Züge des Gegners werden automatisch als „Auto“ markiert; eigene Folgezüge kann man ebenfalls auf „Auto“ stellen. Weitere Lösungen oder Varianten anlegen, Notizen zu Zügen. Die App prüft, ob das Puzzle lösbar ist. |
+| Teilen | Puzzle-Code kopieren (Text, z. B. per Nachricht) und auf einem anderen Gerät über „Code einfügen“ importieren. |
+| Beispiele | Fünf Beispiel-Puzzles: Raigeki-OTK, Fusion, Spiegelkraft umgehen, Sinneswandel (zwei Lösungen) und Ash Blossom umgehen. |
+
+Grenzen bis Phase 5: Das Spielfeld kennt die Kartentexte nicht. Es prüft keine Regeln (z. B. Beschwörungsbedingungen oder Effekte), sondern nur, ob deine Züge zur gespeicherten Lösung passen. Die Prüfung über die Regel-Engine kommt mit Phase 5.
+
 ## Tech-Stack
 
 - **React Native 0.88 + Expo SDK 58**, TypeScript, Expo Router (dateibasierte Navigation)
 - **Expo Development Build** (`expo-dev-client`) statt Expo Go, damit später native Module (Regel-Engine) möglich sind
 - **Zustand** für den State, **expo-sqlite** für alle lokalen Daten (auf iOS eine Datei, im Browser OPFS)
 - **expo-file-system** für den Bild-Cache, **expo-image** für die Anzeige
-- **react-native-gesture-handler 3** und **Reanimated 4** für Gesten (Wischen in der Detailansicht, später Drag & Drop auf dem Spielfeld)
+- **react-native-gesture-handler 3** und **Reanimated 4** für Gesten (Wischen in der Detailansicht, Drag & Drop auf dem Spielfeld, Trefferprüfung auf dem UI-Thread)
 - **EAS Build + EAS Submit** für iOS-Builds in der Cloud und die Installation über TestFlight, ohne Mac
 
 ## Ordnerstruktur
@@ -69,24 +87,28 @@ src/
 │  ├─ settings.tsx          Kartendaten-Update, Banlist, Sprache, Bild-Cache
 │  ├─ decks/                index (Liste) · [id] (Editor) · import
 │  ├─ hand/                 index (Deckwahl) · [deckId] (Starthand, Tags, Statistik, Üben)
-│  └─ combos/               index (Liste) · [id] (Editor) · quiz/[id] · review (fällige Combos)
+│  ├─ combos/               index (Liste) · [id] (Editor) · quiz/[id] · review (fällige Combos)
+│  └─ puzzles/              index (Rating, Tagespuzzle, Liste) · [id] (Lösen) · edit/[id] (Editor)
 ├─ components/              Wiederverwendbare UI
 │  ├─ cards/                CardImage, CardTile, CardListItem, CardDetailModal, CardSearchPanel, CardPickerModal, BanBadge
 │  ├─ combos/               ComboQuiz, StepEditor, StepRow, ZoneBoard
+│  ├─ duel/                 DuelBoard (Spielfeld, Drag & Drop), Layout/Trefferprüfung, Stapel-/Kartenauswahl, Aktions-Hook
 │  ├─ handtrainer/          Reiter des Hand-Trainers, Hand-Anzeige, Tag-Chips, Diagramme
 │  └─ ui/                   Button, Chip, TextField, Screen, ProgressBar, Dialoge/Toasts
 ├─ db/                      SQLite-Verbindung und Migrationen
-├─ features/                Fachlogik je Bereich (später auch handtrainer/, combos/, puzzles/, engine/, ai/, analysis/)
+├─ features/                Fachlogik je Bereich (später auch engine/, ai/, analysis/)
 │  ├─ cards/                YGOPRODeck-Client, Sync, Repository/Suche, Bild-Cache, Labels (Deutsch)
 │  ├─ decks/                Store, Repository, YDK/ydke-Parser, Import, Export, Validierung, Sortierung
 │  ├─ handtrainer/          Tags, Wahrscheinlichkeit (exakt + Simulation), Hand-Bewertung, Übungsverlauf
 │  ├─ combos/               Combo-Modell, Aktionen, Spielstand-Tracker, Quiz, SM-2-Wiederholung
+│  ├─ duel/                 Duell-Zustand (alle Zonen), Züge, Kampfberechnung, Zug-Builder, Aktionen je Zone
+│  ├─ puzzles/              Lösungsabgleich, Elo-Rating, Tagespuzzle/Serie, Beispiele, Puzzle-Codes, Repository/Store
 │  └─ settings/             Einstellungen
 ├─ lib/                     Rate-Limiter/Queue, Text-Helfer, Base64
 ├─ theme/                   Farben, Abstände, Kartenrahmen-Farben
-└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter, Wahrscheinlichkeiten, Übungsauswertung, Combos/SM-2, Migrationen)
+└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter, Wahrscheinlichkeiten, Übungsauswertung, Combos/SM-2, Duell/Puzzles, Migrationen)
 test/
-├─ fixtures/                Beispiel-Antworten der YGOPRODeck-API
+├─ fixtures/                Beispiel-Antworten der YGOPRODeck-API (inkl. Karten der Beispiel-Puzzles)
 └─ e2e/                     Web-Smoketest mit Playwright (simulierte API)
 ```
 
@@ -224,6 +246,6 @@ Statisch gebaut wird mit `npm run export:web` (→ `dist/`). Online steht die We
 | 1 ✅ | Deck-Verwaltung, Kartendaten, Bild-Cache, Karten-Detailansicht |
 | 2 ✅ | Opening-/Hand-Trainer: Starthände, Karten-Tags (Starter, Extender, Handtrap, Brick, Board-Breaker), hypergeometrische Statistik + Simulation, Übungsmodus |
 | 3 ✅ | Combo-Trainer: Combo-Routen erfassen, Quiz (Multiple Choice / freie Auswahl), Spaced Repetition |
-| 4 | Puzzles: Spielfeld mit allen Zonen, Drag & Drop/Pencil, Puzzle-Editor, Lösungsvergleich, Rating, Tagespuzzle |
+| 4 ✅ | Puzzles: Spielfeld mit allen Zonen, Drag & Drop/Pencil, Puzzle-Editor, Lösungsvergleich, Rating, Tagespuzzle |
 | 5 | Regel-Engine (ocgcore + Lua-Skripte, nativ oder WebAssembly, AGPL beachten) in eigenem Thread, eigene KI in TypeScript (regelbasiert + Monte Carlo), Replays |
 | 6 | Match-Analyse: Replay-Viewer, Statistiken, KI-Kommentar über die Claude API (API-Key im iOS-Schlüsselbund) |

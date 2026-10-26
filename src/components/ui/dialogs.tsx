@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { create } from 'zustand';
 
 import { colors, radius, spacing } from '@/theme';
 
 import { AppText } from './AppText';
-import { Button } from './Button';
+import { Button, type IconName } from './Button';
 import { TextField } from './TextField';
 
 /**
@@ -31,7 +31,16 @@ type DialogRequest = { id: number } & (
       placeholder?: string;
       resolve: (value: string | null) => void;
     }
+  | {
+      kind: 'choose';
+      title: string;
+      message?: string;
+      options: ChoiceOption<unknown>[];
+      resolve: (value: unknown) => void;
+    }
 );
+
+export type ChoiceOption<T> = { label: string; value: T; icon?: IconName; destructive?: boolean; testID?: string };
 
 let dialogId = 0;
 
@@ -83,6 +92,22 @@ export function promptDialog(options: {
         placeholder: options.placeholder,
         confirmLabel: options.confirmLabel ?? 'Speichern',
         resolve,
+      },
+    });
+  });
+}
+
+/** Action sheet: resolves with the chosen value, or null when dismissed. */
+export function chooseOption<T>(options: { title: string; message?: string; options: ChoiceOption<T>[] }): Promise<T | null> {
+  return new Promise((resolve) => {
+    useDialogStore.setState({
+      dialog: {
+        id: ++dialogId,
+        kind: 'choose',
+        title: options.title,
+        message: options.message,
+        options: options.options as ChoiceOption<unknown>[],
+        resolve: resolve as (value: unknown) => void,
       },
     });
   });
@@ -141,6 +166,35 @@ function DialogBody({ dialog }: { dialog: DialogRequest }) {
     else dialog.resolve(result ? value.trim() || null : null);
   };
 
+  if (dialog.kind === 'choose') {
+    const choose = (option: ChoiceOption<unknown>) => {
+      useDialogStore.setState({ dialog: null });
+      dialog.resolve(option.value);
+    };
+    return (
+      <>
+        <AppText variant="title">{dialog.title}</AppText>
+        {dialog.message ? <AppText variant="muted">{dialog.message}</AppText> : null}
+        <ScrollView style={styles.choices} contentContainerStyle={styles.choiceList}>
+          {dialog.options.map((option, index) => (
+            <Button
+              key={index}
+              testID={option.testID}
+              label={option.label}
+              icon={option.icon}
+              variant={option.destructive ? 'danger' : 'secondary'}
+              onPress={() => choose(option)}
+              style={styles.choice}
+            />
+          ))}
+        </ScrollView>
+        <View style={styles.actions}>
+          <Button testID="dialog-cancel" label="Abbrechen" variant="ghost" onPress={() => close(false)} />
+        </View>
+      </>
+    );
+  }
+
   return (
     <>
       <AppText variant="title">{dialog.title}</AppText>
@@ -181,6 +235,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm },
+  choices: { maxHeight: 420 },
+  choiceList: { gap: spacing.sm },
+  choice: { justifyContent: 'flex-start' },
   toastStack: { position: 'absolute', bottom: spacing.xxl, left: 0, right: 0, alignItems: 'center', gap: spacing.sm },
   toast: {
     maxWidth: 520,

@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CardDetailModal } from '@/components/cards/CardDetailModal';
 import { CardPickerModal } from '@/components/cards/CardPickerModal';
+import { InstanceSheet } from '@/components/duel/InstanceSheet';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { DialogHost } from '@/components/ui/dialogs';
@@ -15,6 +16,7 @@ import { getDb } from '@/db/database';
 import { useCardDb } from '@/features/cards/store';
 import { useCombos } from '@/features/combos/store';
 import { useDecks } from '@/features/decks/store';
+import { usePuzzles } from '@/features/puzzles/store';
 import { useSettings } from '@/features/settings/store';
 import { colors, spacing } from '@/theme';
 
@@ -39,6 +41,7 @@ async function bootstrap() {
     useCardDb.getState().refreshInfo(),
     useDecks.getState().load(),
     useCombos.getState().load(),
+    usePuzzles.getState().load(),
   ]);
 }
 
@@ -85,9 +88,13 @@ export default function RootLayout() {
                 <Stack.Screen name="combos/[id]" options={{ title: 'Combo' }} />
                 <Stack.Screen name="combos/quiz/[id]" options={{ title: 'Quiz' }} />
                 <Stack.Screen name="combos/review" options={{ title: 'Wiederholung' }} />
+                <Stack.Screen name="puzzles/index" options={{ title: 'Puzzles' }} />
+                <Stack.Screen name="puzzles/[id]" options={{ title: 'Puzzle' }} />
+                <Stack.Screen name="puzzles/edit/[id]" options={{ title: 'Puzzle-Editor' }} />
                 <Stack.Screen name="cards" options={{ title: 'Kartendatenbank' }} />
                 <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
               </Stack>
+              <InstanceSheet />
               <CardPickerModal />
               <CardDetailModal />
               <DialogHost />

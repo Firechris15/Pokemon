@@ -4,8 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 const FIXTURES = path.join(__dirname, '..', 'fixtures');
-const en = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'cardinfo.en.json'), 'utf8'));
-const de = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'cardinfo.de.json'), 'utf8'));
+const read = (name) => JSON.parse(fs.readFileSync(path.join(FIXTURES, name), 'utf8'));
+// Main fixtures plus the classic cards used by the sample puzzles.
+const en = { data: [...read('cardinfo.en.json').data, ...read('puzzle-cards.en.json').data] };
+const de = { data: [...read('cardinfo.de.json').data, ...read('puzzle-cards.de.json').data] };
 const CORS = { 'Access-Control-Allow-Origin': '*' };
 const FRAME_COLORS = { normal: '#c9a35a', effect: '#c0703a', fusion: '#8a4fa3', synchro: '#d9d9d9', xyz: '#2b2b2b', link: '#1f5fa8', effect_pendulum: '#c0703a', spell: '#1d9e74', trap: '#bc4a8d' };
 

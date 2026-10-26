@@ -14,7 +14,7 @@ describe('database migrations', () => {
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all()
       .map((row: { name: string }) => row.name);
-    expect(tables).toEqual(expect.arrayContaining(['cards', 'card_alias', 'decks', 'meta', 'settings', 'deck_card_meta', 'hand_practice', 'combos', 'combo_reviews', 'combo_attempts']));
+    expect(tables).toEqual(expect.arrayContaining(['cards', 'card_alias', 'decks', 'meta', 'settings', 'deck_card_meta', 'hand_practice', 'combos', 'combo_reviews', 'combo_attempts', 'puzzles', 'puzzle_attempts', 'daily_puzzles']));
     expect(db.prepare('PRAGMA user_version').get().user_version).toBe(MIGRATIONS.length);
   });
 

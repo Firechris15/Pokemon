@@ -6,6 +6,9 @@ import { foldForSearch } from '@/lib/text';
 const en: { data: ApiCard[] } = require('../../test/fixtures/cardinfo.en.json');
 const de: { data: ApiCard[] } = require('../../test/fixtures/cardinfo.de.json');
 
+const puzzleEn: { data: ApiCard[] } = require('../../test/fixtures/puzzle-cards.en.json');
+const puzzleDe: { data: ApiCard[] } = require('../../test/fixtures/puzzle-cards.de.json');
+
 export const apiEnglish = en.data;
 export const apiGerman = de.data;
 
@@ -16,6 +19,14 @@ export function fixtureCards(): Card[] {
 
 export function cardMap(): Map<number, Card> {
   return new Map(fixtureCards().map((c) => [c.id, c]));
+}
+
+/** Fixture cards plus the classic cards used by the sample puzzles. */
+export function puzzleCardMap(): Map<number, Card> {
+  const germanById = new Map(puzzleDe.data.map((c) => [c.id, c]));
+  const map = cardMap();
+  for (const c of puzzleEn.data) map.set(c.id, mapApiCard(c, germanById.get(c.id)));
+  return map;
 }
 
 /** In-memory replacement for the card repository, used by importer tests. */

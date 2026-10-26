@@ -119,4 +119,38 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_combo_attempts ON combo_attempts(combo_id, created_at);
   `,
+  // v4: puzzles – positions with solutions, attempts (Elo), daily puzzle history
+  `
+  CREATE TABLE puzzles (
+    id TEXT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    difficulty INTEGER NOT NULL,
+    rating REAL NOT NULL,
+    source TEXT NOT NULL,
+    data TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE puzzle_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    puzzle_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    solved INTEGER NOT NULL,
+    mistakes INTEGER NOT NULL,
+    hints INTEGER NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    rated INTEGER NOT NULL,
+    rating_before REAL,
+    rating_after REAL,
+    daily INTEGER NOT NULL
+  );
+  CREATE INDEX idx_puzzle_attempts ON puzzle_attempts(puzzle_id, created_at);
+
+  CREATE TABLE daily_puzzles (
+    day TEXT PRIMARY KEY NOT NULL,
+    puzzle_id TEXT NOT NULL,
+    solved_at INTEGER
+  );
+  `,
 ];

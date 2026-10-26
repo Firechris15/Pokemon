@@ -1,0 +1,249 @@
+{
+ "data": [
+  {
+   "id": 89631139,
+   "name": "Weißer Drache mit eiskaltem Blick",
+   "type": "Normal Monster",
+   "frameType": "normal",
+   "desc": "Dieser legendäre Drache ist eine mächtige Zerstörungsmaschine. Praktisch unbesiegbar, haben nur sehr wenige die Begegnung mit dieser furchterregenden Kreatur überlebt.",
+   "race": "Dragon",
+   "attribute": "LIGHT",
+   "atk": 3000,
+   "def": 2500,
+   "level": 8,
+   "typeline": [
+    "Dragon",
+    "Normal"
+   ],
+   "card_images": [
+    {
+     "id": 89631139,
+     "image_url": "https://images.ygoprodeck.com/images/cards/89631139.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/89631139.jpg"
+    }
+   ],
+   "archetype": "Blue-Eyes"
+  },
+  {
+   "id": 12580477,
+   "name": "Raigeki",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Zerstöre alle Monster, die dein Gegner kontrolliert.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 12580477,
+     "image_url": "https://images.ygoprodeck.com/images/cards/12580477.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/12580477.jpg"
+    }
+   ]
+  },
+  {
+   "id": 91152256,
+   "name": "Keltischer Wächter",
+   "type": "Normal Monster",
+   "frameType": "normal",
+   "desc": "Ein Elf, der gelernt hat, ein Schwert zu führen. Er verwirrt seine Gegner mit blitzschnellen Angriffen.",
+   "race": "Warrior",
+   "attribute": "EARTH",
+   "atk": 1400,
+   "def": 1200,
+   "level": 4,
+   "typeline": [
+    "Warrior",
+    "Normal"
+   ],
+   "card_images": [
+    {
+     "id": 91152256,
+     "image_url": "https://images.ygoprodeck.com/images/cards/91152256.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/91152256.jpg"
+    }
+   ]
+  },
+  {
+   "id": 70781052,
+   "name": "Beschworener Totenkopf",
+   "type": "Normal Monster",
+   "frameType": "normal",
+   "desc": "Ein Unterweltler mit dunklen Kräften, der den Gegner verwirrt. Unter den Unterweltler-Monstern verfügt dieses Monster über beträchtliche Stärke.",
+   "race": "Fiend",
+   "attribute": "DARK",
+   "atk": 2500,
+   "def": 1200,
+   "level": 6,
+   "typeline": [
+    "Fiend",
+    "Normal"
+   ],
+   "card_images": [
+    {
+     "id": 70781052,
+     "image_url": "https://images.ygoprodeck.com/images/cards/70781052.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/70781052.jpg"
+    }
+   ],
+   "archetype": "Archfiend"
+  },
+  {
+   "id": 5318639,
+   "name": "Mystischer Raum-Taifun",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Wähle 1 Zauber/Falle auf dem Spielfeld als Ziel; zerstöre jenes Ziel.",
+   "race": "Quick-Play",
+   "card_images": [
+    {
+     "id": 5318639,
+     "image_url": "https://images.ygoprodeck.com/images/cards/5318639.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/5318639.jpg"
+    }
+   ]
+  },
+  {
+   "id": 44095762,
+   "name": "Spiegelkraft",
+   "type": "Trap Card",
+   "frameType": "trap",
+   "desc": "Wenn ein Monster deines Gegners einen Angriff deklariert: Zerstöre alle Monster in Angriffsposition deines Gegners.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 44095762,
+     "image_url": "https://images.ygoprodeck.com/images/cards/44095762.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/44095762.jpg"
+    }
+   ]
+  },
+  {
+   "id": 32807846,
+   "name": "Verstärkung der Armee",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Füge deiner Hand 1 Krieger-Monster der Stufe 4 oder niedriger von deinem Deck hinzu.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 32807846,
+     "image_url": "https://images.ygoprodeck.com/images/cards/32807846.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/32807846.jpg"
+    }
+   ]
+  },
+  {
+   "id": 81439173,
+   "name": "Törichtes Begräbnis",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Lege 1 Monster von deinem Deck auf den Friedhof.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 81439173,
+     "image_url": "https://images.ygoprodeck.com/images/cards/81439173.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/81439173.jpg"
+    }
+   ]
+  },
+  {
+   "id": 24094653,
+   "name": "Polymerisation",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Beschwöre 1 Fusionsmonster als Fusionsbeschwörung von deinem Extra Deck, indem du Monster von deiner Hand oder deiner Spielfeldseite als Fusionsmaterial verwendest.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 24094653,
+     "image_url": "https://images.ygoprodeck.com/images/cards/24094653.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/24094653.jpg"
+    }
+   ]
+  },
+  {
+   "id": 71625222,
+   "name": "Zeitzauberer",
+   "type": "Effect Monster",
+   "frameType": "effect",
+   "desc": "Einmal pro Spielzug: Du kannst eine Münze werfen und das Ergebnis ansagen. Liegst du richtig, zerstöre alle Monster, die dein Gegner kontrolliert. Liegst du falsch, zerstöre so viele Monster, die du kontrollierst, wie möglich, und falls du dies tust, erhältst du Schaden in Höhe der Hälfte des Gesamt-ATK jener zerstörten Monster.",
+   "race": "Spellcaster",
+   "attribute": "LIGHT",
+   "atk": 500,
+   "def": 400,
+   "level": 2,
+   "typeline": [
+    "Spellcaster",
+    "Effect"
+   ],
+   "card_images": [
+    {
+     "id": 71625222,
+     "image_url": "https://images.ygoprodeck.com/images/cards/71625222.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/71625222.jpg"
+    }
+   ]
+  },
+  {
+   "id": 88819587,
+   "name": "Babydrache",
+   "type": "Normal Monster",
+   "frameType": "normal",
+   "desc": "Viel mehr als nur ein Kind – dieser Drache besitzt ungeahnte Kräfte.",
+   "race": "Dragon",
+   "attribute": "WIND",
+   "atk": 1200,
+   "def": 700,
+   "level": 3,
+   "typeline": [
+    "Dragon",
+    "Normal"
+   ],
+   "card_images": [
+    {
+     "id": 88819587,
+     "image_url": "https://images.ygoprodeck.com/images/cards/88819587.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/88819587.jpg"
+    }
+   ]
+  },
+  {
+   "id": 41462083,
+   "name": "Tausend-Drache",
+   "type": "Fusion Monster",
+   "frameType": "fusion",
+   "desc": "„Zeitzauberer“ + „Babydrache“",
+   "race": "Dragon",
+   "attribute": "WIND",
+   "atk": 2400,
+   "def": 2000,
+   "level": 7,
+   "typeline": [
+    "Dragon",
+    "Fusion"
+   ],
+   "card_images": [
+    {
+     "id": 41462083,
+     "image_url": "https://images.ygoprodeck.com/images/cards/41462083.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/41462083.jpg"
+    }
+   ]
+  },
+  {
+   "id": 4031928,
+   "name": "Sinneswandel",
+   "type": "Spell Card",
+   "frameType": "spell",
+   "desc": "Wähle 1 Monster, das dein Gegner kontrolliert, als Ziel; übernimm bis zur End Phase die Kontrolle darüber.",
+   "race": "Normal",
+   "card_images": [
+    {
+     "id": 4031928,
+     "image_url": "https://images.ygoprodeck.com/images/cards/4031928.jpg",
+     "image_url_small": "https://images.ygoprodeck.com/images/cards_small/4031928.jpg"
+    }
+   ]
+  }
+ ]
+}

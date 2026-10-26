@@ -1,8 +1,8 @@
 /**
  * Web smoke test: drives the exported web build in Chromium with mocked
- * YGOPRODeck responses and checks the Phase 1 flows end to end
- * (card sync, import, deck editor, validation, card detail gestures,
- * persistence and offline image cache).
+ * YGOPRODeck responses and checks the flows end to end: card sync, import,
+ * deck editor, validation, card detail gestures, persistence, offline image
+ * cache, hand trainer, combo quiz and puzzles (drag & drop, editor).
  *
  *   npm run test:e2e        (builds dist/ first)
  *
@@ -47,7 +47,7 @@ const YDK = `#created by test
   fs.mkdirSync(SHOTS, { recursive: true });
   const server = await serve(path.resolve(__dirname, '..', '..', 'dist'), PORT);
   const browser = await chromium.launch();
-  const context = await browser.newContext({ viewport: { width: 1194, height: 834 } });
+  const context = await browser.newContext({ viewport: { width: 1194, height: 834 }, permissions: ['clipboard-read', 'clipboard-write'] });
   await mock.install(context);
   const page = await context.newPage();
   const errors = [];
@@ -109,7 +109,7 @@ const YDK = `#created by test
   await page.getByTestId('filter-frame-extra').click();
   await page.waitForTimeout(500);
   const extraResults = await page.locator('[data-testid^="search-result-"]').count();
-  assert(extraResults === 4, `extra deck filter shows 4 cards (got ${extraResults})`);
+  assert(extraResults === 5, `extra deck filter shows 5 cards (got ${extraResults})`);
   await page.getByTestId('filter-attribute-DARK').click();
   await page.waitForTimeout(500);
   const darkExtra = await page.locator('[data-testid^="search-result-"]').count();
@@ -403,6 +403,185 @@ const YDK = `#created by test
   const row = await page.locator('[data-testid^="combo-"]').first().innerText();
   assert(row.includes('2× geübt') && row.includes('1 schwieriger Schritt'), 'combo list shows practice stats and hard steps: ' + row.replace(/\n/g, ' '));
   await page.screenshot({ path: path.join(SHOTS, '21-combo-list.png') });
+
+  // ---- Phase 4: puzzles -------------------------------------------------------------
+  const drag = async (fromId, toId) => {
+    const a = await page.getByTestId(fromId).first().boundingBox();
+    const b = await page.getByTestId(toId).first().boundingBox();
+    const [ax, ay, bx, by] = [a.x + a.width / 2, a.y + a.height / 2, b.x + b.width / 2, b.y + b.height / 2];
+    await page.mouse.move(ax, ay);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i++) {
+      await page.mouse.move(ax + ((bx - ax) * i) / 12, ay + ((by - ay) * i) / 12);
+      await page.waitForTimeout(16);
+    }
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+  };
+  const feedback = async () => (await page.getByTestId('puzzle-feedback').innerText()).replace(/\n/g, ' | ');
+  const openPuzzle = async (id) => {
+    await page.waitForTimeout(500); // let the attempt of the previous puzzle be stored
+    await page.goto(`${BASE}/puzzles/${id}`);
+    await page.getByTestId('duel-board').waitFor();
+    await page.waitForTimeout(400);
+  };
+
+  await page.goto(`${BASE}/`);
+  await page.getByTestId('tile-puzzles').click();
+  await page.getByTestId('puzzle-rating').waitFor();
+  assert((await page.locator('[data-testid^="puzzle-sample-"]').count()) === 5, 'five sample puzzles installed');
+  assert((await page.getByTestId('puzzle-rating').innerText()).includes('1000'), 'puzzle rating starts at 1000');
+  await page.getByTestId('daily-puzzle').waitFor();
+  await page.screenshot({ path: path.join(SHOTS, '22-puzzles.png') });
+
+  // Raigeki: a wrong move is rejected, then the solution is played by drag & drop.
+  await page.getByTestId('puzzle-sample-raigeki').click();
+  await page.getByTestId('duel-board').waitFor();
+  await page.waitForTimeout(400);
+  await drag('duel-card-89631139', 'zone-opp-monster-3');
+  assert((await feedback()).includes('Nicht der gesuchte Zug'), 'wrong attack rejected');
+  assert(/Rating \d+ \(-\d+\)/.test(await page.getByTestId('rating-change').innerText()), 'first mistake costs rating points');
+  assert((await page.getByTestId('lp-opp-value').innerText()).startsWith('3000'), 'rejected move is not played');
+  await drag('hand-me-12580477', 'zone-me-gy');
+  await page.getByTestId('action-activate').click();
+  assert((await feedback()).includes('Raigeki zerstört'), 'automatic follow-up moves are played and explained');
+  await drag('duel-card-89631139', 'zone-opp-hand');
+  await page.getByTestId('action-direct_attack').click();
+  await page.getByTestId('puzzle-explanation').waitFor();
+  assert((await page.getByTestId('lp-opp-value').innerText()).startsWith('0'), 'direct attack brings the opponent to 0 LP');
+  await page.screenshot({ path: path.join(SHOTS, '23-puzzle-solved.png') });
+
+  // Fusion: Extra Deck pile, material choice; a clean solve raises the rating.
+  await openPuzzle('sample-fusion');
+  await drag('hand-me-24094653', 'zone-me-gy');
+  await page.getByTestId('action-activate').click();
+  await page.getByTestId('pile-top-me-extra').click();
+  await page.getByTestId('sheet-item-41462083').click();
+  await page.getByTestId('action-fusion_summon').click();
+  await page.getByTestId('sheet-item-71625222').click();
+  await page.getByTestId('sheet-item-88819587').click();
+  await page.getByTestId('sheet-confirm').click();
+  assert((await feedback()).includes('Richtig'), 'fusion summon with chosen materials accepted');
+  await drag('duel-card-41462083', 'zone-opp-hand');
+  await page.getByTestId('action-direct_attack').click();
+  await page.getByTestId('puzzle-explanation').waitFor();
+  assert(/\(\+\d+\)/.test(await page.getByTestId('rating-change').innerText()), 'clean solve raises the rating');
+
+  // Mirror Force: target choice; the two attacks may come in any order.
+  await openPuzzle('sample-mirror-force');
+  await drag('hand-me-5318639', 'zone-me-gy');
+  await page.getByTestId('action-activate').click();
+  await page.getByTestId('sheet-item-44095762').click();
+  await page.getByTestId('sheet-confirm').click();
+  assert((await feedback()).includes('Spiegelkraft wird zerstört'), 'targeted activation accepted, trap destroyed automatically');
+  await drag('duel-card-91152256', 'zone-opp-hand');
+  await page.getByTestId('action-direct_attack').click();
+  assert((await feedback()).includes('Richtig'), 'second attacker may attack first');
+  await drag('duel-card-46986414', 'zone-opp-hand');
+  await page.getByTestId('action-direct_attack').click();
+  await page.getByTestId('puzzle-explanation').waitFor();
+
+  // Change of Heart: hint and step-by-step solution, then solved on a retry.
+  await openPuzzle('sample-change-of-heart');
+  await page.getByTestId('puzzle-hint').click();
+  assert((await feedback()).includes('Tipp: Nutze Sinneswandel'), 'hint names the card to play');
+  for (let i = 0; i < 6 && !(await page.getByTestId('puzzle-explanation').count()); i++) {
+    await page.getByTestId('puzzle-reveal').click();
+    await page.waitForTimeout(150);
+  }
+  assert((await page.getByTestId('lp-opp-value').innerText()).startsWith('0'), 'revealed solution plays to the end');
+  await page.getByTestId('puzzle-restart').click();
+  await drag('hand-me-4031928', 'zone-me-gy');
+  await page.getByTestId('action-activate').click();
+  await page.getByTestId('sheet-item-70781052').click();
+  await page.getByTestId('sheet-confirm').click();
+  assert((await feedback()).includes('übernimmst'), 'control change played automatically');
+  await drag('duel-card-70781052', 'zone-opp-monster-1');
+  assert((await feedback()).includes('Richtig'), 'attack on the set monster with the stolen monster (second solution)');
+  await drag('duel-card-89631139', 'zone-opp-hand');
+  await page.getByTestId('action-direct_attack').click();
+  await page.getByTestId('puzzle-explanation').waitFor();
+
+  // Ash Blossom: bait first, deck and GY viewers.
+  await openPuzzle('sample-ash');
+  await drag('hand-me-81439173', 'zone-me-gy');
+  await page.getByTestId('action-activate').click();
+  assert((await feedback()).includes('Nicht der gesuchte Zug'), 'running into Ash Blossom is wrong');
+  await drag('hand-me-32807846', 'zone-me-gy');
+  await page.getByTestId('action-activate').click();
+  assert((await feedback()).includes('Ash Blossom ab'), 'opponent answers with Ash Blossom');
+  await drag('hand-me-81439173', 'zone-me-gy');
+  await page.getByTestId('action-activate').click();
+  await page.getByTestId('pile-top-me-deck').click();
+  await page.getByTestId('sheet-item-89631139').click();
+  await page.getByTestId('action-send_gy').click();
+  await drag('hand-me-83764718', 'zone-me-gy');
+  await page.getByTestId('action-activate').click();
+  await page.getByTestId('sheet-confirm').click();
+  await page.getByTestId('pile-top-me-gy').click();
+  await page.getByTestId('sheet-item-89631139').click();
+  await page.getByTestId('action-ss_atk').click();
+  assert((await feedback()).includes('Richtig'), 'monster special summoned from the GY viewer');
+  await drag('duel-card-89631139', 'zone-opp-hand');
+  await page.getByTestId('action-direct_attack').click();
+  await page.getByTestId('puzzle-explanation').waitFor();
+  await page.screenshot({ path: path.join(SHOTS, '24-puzzle-ash.png') });
+  await page.waitForTimeout(500);
+
+  await page.goto(`${BASE}/puzzles`);
+  await page.getByTestId('puzzle-streak').waitFor();
+  const streakText = await page.getByTestId('puzzle-streak').innerText();
+  assert(/\b1\b/.test(streakText) && streakText.includes('5/5 gelöst'), 'all samples solved, daily streak 1: ' + streakText.replace(/\n/g, ' '));
+  assert((await page.getByTestId('daily-puzzle').innerText()).includes('Heute gelöst'), 'daily puzzle marked as solved');
+
+  // Editor: build a position, record a solution and test it.
+  const pickSearch = async (query, id) => {
+    await page.getByTestId('card-picker').waitFor();
+    await page.getByTestId('picker-tab-search').click();
+    await page.getByTestId('card-search-input').fill(query);
+    await page.getByTestId(`picker-add-${id}`).click();
+  };
+  await page.getByTestId('puzzle-new').click();
+  await page.getByTestId('dialog-input').fill('Mein Puzzle');
+  await page.getByTestId('dialog-confirm').click();
+  await page.waitForURL(/\/puzzles\/edit\//);
+  await page.getByTestId('duel-board').waitFor();
+  await page.getByTestId('zone-me-monster-0').click();
+  await pickSearch('dunkler magier', 46986414);
+  await page.getByTestId('zone-opp-monster-1').click();
+  await pickSearch('maxx', 23434538);
+  await page.getByTestId('zone-opp-hand').click();
+  await pickSearch('nibiru', 27204311);
+  await page.getByTestId('picker-done').click();
+  await page.getByTestId('lp-input-opp').fill('2000');
+  await drag('duel-card-23434538', 'zone-opp-monster-3');
+  await page.getByTestId('mode-solutions').click();
+  assert((await page.getByTestId('puzzle-problems').innerText()).includes('noch keine Lösung'), 'editor warns about a missing solution');
+  await drag('duel-card-46986414', 'zone-opp-monster-3');
+  assert((await page.getByTestId('recorded-move-0').innerText()).includes('-2000 LP'), 'attack recorded with battle damage');
+  assert((await page.getByTestId('puzzle-problems').count()) === 0, 'puzzle is solvable after recording');
+  await page.screenshot({ path: path.join(SHOTS, '25-puzzle-editor.png') });
+  await page.getByTestId('editor-test').click();
+  await page.waitForURL(/\/puzzles\/(?!edit)[^/]+$/);
+  await page.getByTestId('duel-board').waitFor();
+  await page.waitForTimeout(300);
+  await drag('duel-card-46986414', 'zone-opp-monster-3');
+  assert((await feedback()).includes('Gelöst'), 'own puzzle solvable');
+  await page.waitForTimeout(500);
+
+  // Share and import as puzzle code.
+  await page.goto(`${BASE}/puzzles`);
+  const ownRow = page.locator('[data-testid^="puzzle-"]').filter({ hasText: 'Mein Puzzle' }).last();
+  await ownRow.locator('[data-testid^="puzzle-more-"]').click();
+  await page.getByTestId('puzzle-action-share').click();
+  const code = await page.evaluate(() => navigator.clipboard.readText());
+  assert(code.startsWith('ygo-puzzle:') && code.includes('Mein Puzzle'), 'puzzle code copied');
+  await page.getByTestId('puzzle-import').click();
+  await page.getByTestId('dialog-input').fill(code);
+  await page.getByTestId('dialog-confirm').click();
+  await page.getByText('„Mein Puzzle“ importiert').waitFor();
+  const rows = await page.locator('[data-testid^="puzzle-"]').filter({ hasText: 'Mein Puzzle' }).filter({ hasText: 'Rating' }).allInnerTexts();
+  assert(rows.length === 2 && rows.some((r) => r.includes('Importiert')), 'imported puzzle listed next to the original');
 
   // Phone portrait
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
