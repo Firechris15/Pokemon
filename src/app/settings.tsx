@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { CardDbPanel } from '@/components/CardDbPanel';
+import { EngineDataPanel } from '@/components/engine/EngineDataPanel';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
@@ -129,10 +130,19 @@ export default function SettingsScreen() {
         )}
       </Section>
 
+      <Section title="Regel-Engine (KI-Duell)">
+        <EngineDataPanel detailed />
+      </Section>
+
       <Section title="Über">
         <AppText variant="muted">
           YGO Trainer {Constants.expoConfig?.version ?? ''} – private Trainings-App, nicht zur Veröffentlichung bestimmt. Kartendaten und -bilder
           stammen von der YGOPRODeck-API (db.ygoprodeck.com). Yu-Gi-Oh! ist eine Marke von Konami; Kartenbilder sind urheberrechtlich geschützt.
+        </AppText>
+        <AppText variant="muted" testID="licenses">
+          Regel-Engine: EDOPro-Kern „ocgcore“ von Project Ignis (AGPL-3.0), als WebAssembly über „ocgcore-wasm“ (MIT). Kartenskripte und Regel-Datenbank: Project
+          Ignis CardScripts und BabelCDB (AGPL-3.0). Diese App steht deshalb ebenfalls unter der AGPL-3.0; der vollständige Quellcode liegt unter
+          github.com/Firechris15/Pokemon.
         </AppText>
       </Section>
     </Screen>

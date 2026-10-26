@@ -20,7 +20,7 @@ const position = (card: CardInstance, monster: boolean) =>
  * lose (aux.BeginPuzzle), so the opponent's LP must reach 0 this turn.
  */
 export function puzzleScript(state: DuelState, cardType: (code: number) => number): string {
-  const lines = ['-- generated puzzle', 'Debug.ReloadFieldBegin(DUEL_ATTACK_FIRST_TURN+DUEL_SIMPLE_AI,5)', 'local c={}'];
+  const lines = ['-- generated puzzle', 'Debug.ReloadFieldBegin(DUEL_ATTACK_FIRST_TURN,5)', 'local c={}'];
   const player = (side: Side) => (side === 'me' ? 0 : 1);
   lines.push(`Debug.SetPlayerInfo(0,${state.me.lp},0,0)`, `Debug.SetPlayerInfo(1,${state.opp.lp},0,0)`);
   let n = 0;

@@ -153,4 +153,35 @@ export const MIGRATIONS: string[] = [
     solved_at INTEGER
   );
   `,
+  // v5: rules engine – EDOPro card data, cached Lua scripts, duel replays
+  `
+  CREATE TABLE engine_cards (
+    code INTEGER PRIMARY KEY NOT NULL,
+    data TEXT NOT NULL,
+    name TEXT NOT NULL,
+    strings TEXT NOT NULL DEFAULT '[]'
+  );
+
+  CREATE TABLE engine_scripts (
+    name TEXT PRIMARY KEY NOT NULL,
+    source TEXT NOT NULL,
+    fetched_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE replays (
+    id TEXT PRIMARY KEY NOT NULL,
+    created_at INTEGER NOT NULL,
+    mode TEXT NOT NULL,
+    title TEXT NOT NULL,
+    my_deck TEXT NOT NULL,
+    opp_deck TEXT NOT NULL,
+    ai_level INTEGER,
+    winner INTEGER,
+    reason TEXT NOT NULL,
+    turns INTEGER NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    data TEXT NOT NULL
+  );
+  CREATE INDEX idx_replays_created ON replays(created_at);
+  `,
 ];

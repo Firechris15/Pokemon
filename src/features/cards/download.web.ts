@@ -17,7 +17,11 @@ export async function downloadJson(
   const total = Number.isFinite(lengthHeader) && lengthHeader > 0 ? lengthHeader : null;
   if (!response.body || !onProgress) return response.json();
 
-  const reader = response.body.getReader();
+  return JSON.parse(new TextDecoder().decode(await readWithProgress(response, total, onProgress)));
+}
+
+async function readWithProgress(response: Response, total: number | null, onProgress: (progress: DownloadProgress) => void): Promise<Uint8Array> {
+  const reader = response.body!.getReader();
   const chunks: Uint8Array[] = [];
   let received = 0;
   for (;;) {
@@ -33,5 +37,20 @@ export async function downloadJson(
     bytes.set(chunk, offset);
     offset += chunk.length;
   }
-  return JSON.parse(new TextDecoder().decode(bytes));
+  return bytes;
+}
+
+/** Downloads a binary file (e.g. EDOPro's card database) into memory. */
+export async function downloadBytes(url: string, onProgress?: (progress: DownloadProgress) => void): Promise<Uint8Array> {
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch {
+    throw new Error('Download fehlgeschlagen. Bitte Internetverbindung prüfen.');
+  }
+  if (!response.ok) throw new Error(`Download fehlgeschlagen (Status ${response.status}).`);
+  const lengthHeader = Number(response.headers.get('Content-Length'));
+  const total = Number.isFinite(lengthHeader) && lengthHeader > 0 ? lengthHeader : null;
+  if (!response.body || !onProgress) return new Uint8Array(await response.arrayBuffer());
+  return readWithProgress(response, total, onProgress);
 }

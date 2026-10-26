@@ -16,12 +16,15 @@ export type EngineRuntime = {
   now: () => number;
 };
 
+// EDOPro victory reasons (strings.conf "!victory"); -1 = surrender in this app.
 const WIN_REASONS: Record<number, string> = {
   [-1]: 'Aufgegeben',
-  0: 'Lebenspunkte auf 0',
-  1: 'Keine Karten mehr im Deck',
-  2: 'Zeit abgelaufen',
-  3: 'Verbindung getrennt',
+  0: 'Aufgegeben',
+  1: 'Lebenspunkte auf 0',
+  2: 'Keine Karten mehr im Deck',
+  3: 'Zeit abgelaufen',
+  4: 'Verbindung getrennt',
+  0x10: 'Exodia',
 };
 
 export function winReason(reason: number): string {
@@ -133,6 +136,7 @@ export class EngineController {
       announce: this.announce,
       memory: memory ?? newMemory(),
       passive,
+      eager: !passive && Boolean(session.config.players[player].eager),
     };
   }
 

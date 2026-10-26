@@ -10,6 +10,7 @@ import { Button, IconButton } from '@/components/ui/Button';
 import { showToast } from '@/components/ui/dialogs';
 import { displayName } from '@/features/cards/labels';
 import { useCards } from '@/features/cards/useCards';
+import { randomSeed, useDuel } from '@/features/engine/duelStore';
 import { buildMove, isError, type Intent } from '@/features/duel/builder';
 import { describeMove } from '@/features/duel/moves';
 import { findCard } from '@/features/duel/state';
@@ -178,6 +179,22 @@ function Solver({ puzzle }: { puzzle: Puzzle }) {
     else showToast('Keine weiteren Puzzles.');
   };
 
+  const playWithRules = () => {
+    const player = (name: string, ai: 1 | null) => ({ name, lp: 8000, main: [], extra: [], startHand: 0, drawPerTurn: 0, ai, eager: ai !== null });
+    useDuel.getState().start({
+      mode: 'puzzle',
+      title: `Puzzle: ${puzzle.title}`,
+      myDeck: puzzle.title,
+      oppDeck: 'Puzzle-Gegner',
+      aiLevel: 1,
+      viewer: 0,
+      puzzleId: puzzle.id,
+      puzzleState: puzzle.initial,
+      config: { seed: randomSeed(), players: [player('Du', null), player('Gegner', 1)] },
+    });
+    router.push('/duel/play');
+  };
+
   const done = session.status !== 'playing';
   const boardBox = wide ? { flex: 1 } : { height: Math.min(width * 1.3, height * 0.62) };
 
@@ -230,6 +247,13 @@ function Solver({ puzzle }: { puzzle: Puzzle }) {
             <Button testID="puzzle-restart" label="Neu starten" icon="refresh" variant="ghost" onPress={restart} />
           </>
         )}
+      </View>
+
+      <View style={styles.rules}>
+        <AppText variant="small">
+          Mit der Regel-Engine spielst du die Stellung nach den echten Kartentexten – jeder legale Weg zählt, der Gegner antwortet mit seinen Karten.
+        </AppText>
+        <Button testID="puzzle-engine" label="Mit echten Regeln spielen" icon="hardware-chip-outline" onPress={playWithRules} />
       </View>
 
       <View style={styles.history}>
@@ -304,4 +328,5 @@ const styles = StyleSheet.create({
   explanation: { gap: spacing.xs, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   history: { gap: 4, marginTop: spacing.sm },
+  rules: { gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md },
 });

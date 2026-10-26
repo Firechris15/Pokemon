@@ -48,8 +48,8 @@
     "start:tunnel": "expo start --go --tunnel",
     "ios": "expo run:ios",
     "android": "expo run:android",
-    "web": "expo start --web",
-    "export:web": "expo export --platform web",
+    "web": "npm run build:engine && expo start --web",
+    "export:web": "npm run build:engine && expo export --platform web",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "lint": "expo lint",
@@ -58,9 +58,11 @@
     "build:preview": "eas build --profile preview --platform ios",
     "build:prod": "eas build --profile production --platform ios",
     "submit:ios": "eas submit --platform ios --profile production --latest",
-    "test:e2e": "expo export --platform web --output-dir dist && node test/e2e/smoke.js",
+    "test:e2e": "npm run build:engine && expo export --platform web --output-dir dist && node test/e2e/smoke.js",
     "test:engine": "node scripts/test-engine.mjs",
-    "fixtures:engine": "node scripts/engine-fixtures.mjs"
+    "fixtures:engine": "node scripts/engine-fixtures.mjs",
+    "build:engine": "node scripts/build-engine.mjs",
+    "postinstall": "node scripts/build-engine.mjs"
   },
   "private": true,
   "jest": {

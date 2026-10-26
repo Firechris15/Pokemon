@@ -29,6 +29,8 @@ export type AiContext = {
   memory: AiMemory;
   /** In simulations the human side never chains (it cannot be predicted). */
   passive?: boolean;
+  /** Puzzles: answer with hand traps and traps at the first opportunity. */
+  eager?: boolean;
 };
 
 /** State the AI keeps between decisions. */
@@ -267,8 +269,11 @@ function chain(ctx: AiContext, r: SelectChain): EngineResponse {
   if (r.selects.length === 0) return { type: Res.SELECT_CHAIN, index: null };
   if (r.forced) return { type: Res.SELECT_CHAIN, index: 0 };
   if (ctx.passive) return { type: Res.SELECT_CHAIN, index: null };
+  // spe_count > 0: effects that respond to what just happened (hand traps, "when …" traps, triggers).
+  const triggered = r.spe_count > 0;
+  if (ctx.eager && triggered) return { type: Res.SELECT_CHAIN, index: 0 };
   const opponentActing = ctx.snapshot.chain.some((link) => link.controller !== ctx.me) || ctx.snapshot.turnPlayer !== ctx.me;
-  const chance = opponentActing ? 0.75 : 0.6;
+  const chance = triggered ? (opponentActing ? 0.9 : 0.75) : 0.15;
   if (ctx.rng() < chance) return { type: Res.SELECT_CHAIN, index: Math.floor(ctx.rng() * r.selects.length) };
   return { type: Res.SELECT_CHAIN, index: null };
 }

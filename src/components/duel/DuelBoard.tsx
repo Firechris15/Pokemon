@@ -47,6 +47,8 @@ export function DuelBoard({ state, cards, width, height, onDrop, onCardPress, on
   const [drag, setDrag] = useState<DragState | null>(null);
 
   const canSee = (card: CardInstance, side: Side, zone: Location['zone']) => {
+    // Passcode 0 = unknown to the viewer (rules engine view).
+    if (card.cardId === 0) return false;
     if (revealAll || (side === 'me' && zone !== 'deck' && zone !== 'extra')) return true;
     if (zone === 'hand') return card.revealed;
     if (zone === 'deck' || zone === 'extra') return false;

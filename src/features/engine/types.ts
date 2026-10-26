@@ -33,6 +33,8 @@ export type DuelPlayerConfig = {
   drawPerTurn: number;
   /** Played by the AI in the worker; null = asks the app. */
   ai: AiLevel | null;
+  /** Puzzles: the AI uses responses at the first opportunity. */
+  eager?: boolean;
 };
 
 export type DuelConfig = {
