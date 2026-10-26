@@ -1,0 +1,56 @@
+# Builds the browser version on every push to main and publishes it on
+# GitHub Pages (https://<user>.github.io/<repo>/), so the app can be tried
+# on the iPad in Safari without a PC.
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: Web-Version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Checks
+        run: |
+          npm run typecheck
+          npx eslint .
+          npm test -- --ci
+      - name: Serve the app from /<repo>/
+        run: node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('app.json','utf8'));p.expo.experiments.baseUrl='/${{ github.event.repository.name }}';fs.writeFileSync('app.json',JSON.stringify(p,null,2))"
+      - name: Export web build
+        run: npx expo export --platform web --output-dir dist
+        env:
+          EXPO_NO_TELEMETRY: 1
+      # GitHub Pages has no SPA rewrites; 404.html lets deep links load the app.
+      - run: cp dist/index.html dist/404.html
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
