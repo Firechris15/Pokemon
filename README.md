@@ -58,6 +58,8 @@ Erreichbar über die Kachel **Combos**. Die Kachel zeigt an, wie viele Combos zu
 
 ```
 app.json · eas.json · metro.config.js · eslint.config.js
+.github/workflows/web.yml   Prüfen + Web-Version auf GitHub Pages veröffentlichen
+.devcontainer/              Entwicklungsumgebung für GitHub Codespaces
 assets/images/              App-Icon, Splash, Favicon
 src/
 ├─ app/                     Screens (Expo Router)
@@ -89,6 +91,34 @@ test/
 ```
 
 Plattformspezifischer Code liegt in `*.web.ts`-Dateien (z. B. `imageBackend.web.ts`: Cache Storage statt Dateisystem).
+
+## Auf dem iPad testen (ohne PC)
+
+### A) Web-Version in Safari (am einfachsten)
+
+Bei jeder Änderung an `main` baut GitHub die Browser-Version automatisch, prüft sie vorher mit Typecheck, Lint und Tests und veröffentlicht sie über GitHub Pages (`.github/workflows/web.yml`).
+
+1. **Einmalig:** Im Repo auf GitHub → *Settings* → *Pages* → bei *Build and deployment* unter *Source* „**GitHub Actions**“ wählen.
+2. Danach startet der Bau bei jeder Änderung an `main`. Manuell geht es über *Actions* → *Web-Version* → *Run workflow*. Ein Durchlauf dauert ein paar Minuten.
+3. In Safari öffnen: **https://firechris15.github.io/Pokemon/**. Über Teilen → „Zum Home-Bildschirm“ wirkt sie wie eine App.
+4. In der App auf „Herunterladen“ tippen (Kartendatenbank). Decks, Tags und Combos werden im Browser gespeichert.
+
+Hinweise: Safari kann Website-Daten löschen, wenn eine Seite 7 Tage nicht benutzt wurde. Über den Home-Bildschirm gestartet gilt das nicht, deshalb lieber so öffnen. Die Seite ist öffentlich erreichbar, die Daten bleiben aber nur in deinem Browser. Kartenbilder lädt dein Browser direkt von YGOPRODeck. Die Web-Version ist zum Ausprobieren gedacht. Für die echte iPad-App (Apple Pencil, Dateien-App, Offline-Speicher im App-Container) ist TestFlight der Weg.
+
+### B) Native App in Expo Go über GitHub Codespaces
+
+Das ist näher an der fertigen App, aber aufwendiger. Der Entwicklungsserver läuft in einer Cloud-Umgebung im Browser.
+
+1. Die App **Expo Go** aus dem App Store installieren und dich darin mit einem kostenlosen Expo-Konto anmelden (<https://expo.dev/signup>).
+2. Auf GitHub im Repo: *Code* → *Codespaces* → *Create codespace on main*. Die Umgebung (`.devcontainer/`) installiert alles automatisch.
+3. Im Terminal des Codespace:
+
+   ```bash
+   npx expo login          # mit demselben Expo-Konto
+   npm run start:tunnel    # = expo start --go --tunnel
+   ```
+
+4. In Expo Go erscheint das Projekt unter „Development servers“. Alternativ den angezeigten `exp://…`-Link in Safari öffnen.
 
 ## Lokales Setup (PC, Windows/macOS/Linux)
 
@@ -152,7 +182,7 @@ Hinweise:
 - Jede neue Phase bzw. Code-Änderung braucht einen neuen Build (`npm run build:prod` + `npm run submit:ios`).
 - Deine Daten (Decks, Kartendatenbank, Bilder) liegen nur in der App auf dem iPad. Wird die App gelöscht, sind sie weg. Decks lassen sich vorher als `.ydk` exportieren.
 
-### Schnell ausprobieren mit Expo Go (ohne Apple-Entwicklerkonto)
+### Schnell ausprobieren mit Expo Go am PC (ohne Apple-Entwicklerkonto)
 
 Zum Anschauen reicht die kostenlose App **Expo Go** aus dem App Store. Alle Module von Phase 1 sind darin enthalten. PC und iPad müssen im selben WLAN sein:
 
@@ -184,9 +214,8 @@ Das Profil `preview` erzeugt einen normalen, eigenständigen Build für registri
 
 ## Browser-Version (Expo Web)
 
-`npm run web` startet die App im Browser. SQLite läuft dort als WebAssembly (OPFS) und braucht die Header
-`Cross-Origin-Embedder-Policy: credentialless` und `Cross-Origin-Opener-Policy: same-origin`. Der Dev-Server setzt sie automatisch (`metro.config.js`).
-Für statisches Hosting (`npm run export:web` → `dist/`) muss der Webserver diese Header ebenfalls senden. Safari unterstützt `credentialless` derzeit nicht, deshalb im Browser am besten Chrome, Edge oder Firefox verwenden. Auf dem iPad ist die native App der Hauptweg.
+`npm run web` startet die App im Browser. SQLite läuft dort als WebAssembly (OPFS). Die App nutzt nur die asynchrone SQLite-API und braucht deshalb keine besonderen Server-Header. Der Dev-Server setzt `Cross-Origin-Embedder-Policy`/`-Opener-Policy` trotzdem (`metro.config.js`), damit auch synchrone Aufrufe möglich wären.
+Statisch gebaut wird mit `npm run export:web` (→ `dist/`). Online steht die Web-Version automatisch über GitHub Pages bereit (siehe oben).
 
 ## Roadmap
 

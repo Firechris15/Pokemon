@@ -1,0 +1,11 @@
+{
+  "name": "YGO Trainer",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm ci",
+  "forwardPorts": [8081],
+  "customizations": {
+    "vscode": {
+      "extensions": ["expo.vscode-expo-tools", "dbaeumer.vscode-eslint"]
+    }
+  }
+}
