@@ -38,6 +38,11 @@ yarn-error.*
 
 # test / tooling output
 coverage/
+test/engine/.dist/
+
+# generated engine worker bundles (npm run build:engine)
+public/engine/
+src/features/engine/generated/
 
 # web smoke test output
 test/e2e/screenshots/

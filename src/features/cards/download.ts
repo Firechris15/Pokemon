@@ -32,3 +32,21 @@ export async function downloadJson(
     if (target.exists) target.delete();
   }
 }
+
+/** Downloads a binary file (e.g. EDOPro's card database) into memory. */
+export async function downloadBytes(url: string, onProgress?: (progress: DownloadProgress) => void): Promise<Uint8Array> {
+  const target = new File(Paths.cache, `download-${Date.now()}.bin`);
+  try {
+    await File.downloadFileAsync(url, target, {
+      idempotent: true,
+      onProgress: onProgress
+        ? ({ bytesWritten, totalBytes }) => onProgress({ received: bytesWritten, total: totalBytes > 0 ? totalBytes : null })
+        : undefined,
+    });
+    return await target.bytes();
+  } catch (error) {
+    throw new Error(`Download fehlgeschlagen. Bitte Internetverbindung prüfen. (${error instanceof Error ? error.message : String(error)})`);
+  } finally {
+    if (target.exists) target.delete();
+  }
+}

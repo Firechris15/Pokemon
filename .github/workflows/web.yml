@@ -33,6 +33,7 @@ jobs:
           npm run typecheck
           npx eslint .
           npm test -- --ci
+          npm run test:engine
       - name: Serve the app from /<repo>/
         run: node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('app.json','utf8'));p.expo.experiments.baseUrl='/${{ github.event.repository.name }}';fs.writeFileSync('app.json',JSON.stringify(p,null,2))"
       - name: Export web build

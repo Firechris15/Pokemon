@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CardDetailModal } from '@/components/cards/CardDetailModal';
 import { CardPickerModal } from '@/components/cards/CardPickerModal';
 import { InstanceSheet } from '@/components/duel/InstanceSheet';
+import { EngineHostView } from '@/features/engine/host';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { DialogHost } from '@/components/ui/dialogs';
@@ -91,9 +92,14 @@ export default function RootLayout() {
                 <Stack.Screen name="puzzles/index" options={{ title: 'Puzzles' }} />
                 <Stack.Screen name="puzzles/[id]" options={{ title: 'Puzzle' }} />
                 <Stack.Screen name="puzzles/edit/[id]" options={{ title: 'Puzzle-Editor' }} />
+                <Stack.Screen name="duel/index" options={{ title: 'KI-Duell' }} />
+                <Stack.Screen name="duel/play" options={{ title: 'Duell', gestureEnabled: false }} />
+                <Stack.Screen name="replays/index" options={{ title: 'Replays' }} />
+                <Stack.Screen name="replays/[id]" options={{ title: 'Replay' }} />
                 <Stack.Screen name="cards" options={{ title: 'Kartendatenbank' }} />
                 <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
               </Stack>
+              <EngineHostView />
               <InstanceSheet />
               <CardPickerModal />
               <CardDetailModal />
