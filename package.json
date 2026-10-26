@@ -19,6 +19,7 @@
     "expo-sqlite": "~58.0.13",
     "expo-status-bar": "~58.0.4",
     "expo-system-ui": "~58.0.6",
+    "ocgcore-wasm": "^0.1.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.0",
@@ -27,12 +28,14 @@
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
     "react-native-web": "~0.21.4",
+    "react-native-webview": "^14.0.1",
     "react-native-worklets": "0.13.0",
     "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~58.0.4",
     "jest": "^30.5.2",
@@ -55,7 +58,9 @@
     "build:preview": "eas build --profile preview --platform ios",
     "build:prod": "eas build --profile production --platform ios",
     "submit:ios": "eas submit --platform ios --profile production --latest",
-    "test:e2e": "expo export --platform web --output-dir dist && node test/e2e/smoke.js"
+    "test:e2e": "expo export --platform web --output-dir dist && node test/e2e/smoke.js",
+    "test:engine": "node scripts/test-engine.mjs",
+    "fixtures:engine": "node scripts/engine-fixtures.mjs"
   },
   "private": true,
   "jest": {
