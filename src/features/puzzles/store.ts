@@ -87,6 +87,7 @@ export const usePuzzles = create<PuzzlesState>((set, get) => ({
       delete stats[id];
       return { puzzles: s.puzzles.filter((p) => p.id !== id), stats };
     });
+    await get().ensureDaily();
   },
 
   async duplicate(id) {

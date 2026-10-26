@@ -205,3 +205,74 @@ export function fieldCards(state: DuelState, side?: Side): { loc: Location; card
 export function monstersOf(state: DuelState, side: Side): { loc: Location; card: CardInstance }[] {
   return fieldCards(state, side).filter((f) => f.loc.zone === 'monster' || f.loc.zone === 'emz');
 }
+
+/**
+ * Editor setup: moves a card instance to a location without recording a move.
+ * The card then belongs to the side it was placed on. A taken slot leaves
+ * the card where it was.
+ */
+export function relocate(input: DuelState, uid: string, target: Location): DuelState {
+  const found = locate(input, uid);
+  if (!found) return input;
+  if (isSlotZone(target.zone)) {
+    const arr = zoneArray(input, target);
+    const index = target.index !== undefined ? target.index : freeSlot(input, target);
+    if (index < 0 || (arr[index] !== null && arr[index]?.uid !== uid)) return input;
+  }
+  const state = cloneDuel(input);
+  const { loc } = found;
+  const card = removeAt(state, loc, loc.index!);
+  const moved = card.owner !== target.side;
+  card.owner = target.side;
+  if (moved) card.revealed = target.side === 'me';
+  if (isSlotZone(target.zone)) {
+    const arr = zoneArray(state, target);
+    arr[target.index !== undefined ? target.index : freeSlot(state, target)] = card;
+  } else {
+    detachMaterials(state, card, target.zone);
+    card.atk = null;
+    card.def = null;
+    card.defense = false;
+    card.faceUp = true;
+    zoneArray(state, target).push(card);
+  }
+  return state;
+}
+
+/** Editor setup: removes a card instance from the board. */
+export function removeInstance(input: DuelState, uid: string): DuelState {
+  const found = locate(input, uid);
+  if (!found) return input;
+  const state = cloneDuel(input);
+  removeAt(state, found.loc, found.loc.index!);
+  return state;
+}
+
+/** Editor setup: changes position, face, stats or visibility of a card. */
+export function updateInstance(input: DuelState, uid: string, patch: Partial<Pick<CardInstance, 'faceUp' | 'defense' | 'atk' | 'def' | 'revealed'>>): DuelState {
+  const state = cloneDuel(input);
+  const found = locate(state, uid);
+  if (found) Object.assign(found.card, patch);
+  return state;
+}
+
+/** Every passcode used on the board (including Xyz materials). */
+export function boardCardIds(state: DuelState): number[] {
+  const ids = new Set<number>();
+  const add = (card: CardInstance | null) => {
+    if (!card) return;
+    ids.add(card.cardId);
+    card.materials.forEach(add);
+  };
+  for (const side of ['me', 'opp'] as Side[]) {
+    for (const zone of ALL_ZONES) if (zone !== 'emz') zoneArray(state, { side, zone }).forEach(add);
+  }
+  state.emz.forEach(add);
+  return [...ids];
+}
+
+/** The instance a recorded location refers to (exact index first, then any copy in that zone). */
+export function findCard(state: DuelState, loc: Location, cardId: number): CardInstance | null {
+  const index = findIndex(state, loc, cardId);
+  return index >= 0 ? zoneArray(state, loc)[index] : null;
+}

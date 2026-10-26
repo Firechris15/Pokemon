@@ -1,7 +1,8 @@
+import type { DuelState } from '@/features/duel/types';
 import { createId } from '@/lib/id';
 
 import { DIFFICULTY_RATING } from './rating';
-import type { Difficulty, Puzzle } from './types';
+import type { Difficulty, Puzzle, Solution } from './types';
 
 /**
  * Puzzles are shared as plain text: a prefix plus JSON. The text can be
@@ -10,6 +11,24 @@ import type { Difficulty, Puzzle } from './types';
 const PREFIX = 'ygo-puzzle:';
 
 type Shared = Pick<Puzzle, 'title' | 'task' | 'description' | 'explanation' | 'goal' | 'difficulty' | 'initial' | 'solutions'> & { v: 1 };
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+
+function isDuelState(value: unknown): value is DuelState {
+  if (!isObject(value) || !Array.isArray(value.emz)) return false;
+  return (['me', 'opp'] as const).every((side) => {
+    const s = value[side];
+    return isObject(s) && typeof s.lp === 'number' && ['hand', 'monster', 'spell', 'field', 'gy', 'banished', 'deck', 'extra'].every((zone) => Array.isArray(s[zone]));
+  });
+}
+
+function isSolution(value: unknown): value is Solution {
+  return (
+    isObject(value) &&
+    Array.isArray(value.moves) &&
+    value.moves.every((m) => isObject(m) && typeof m.cardId === 'number' && typeof m.action === 'string' && isObject(m.from) && Array.isArray(m.targets))
+  );
+}
 
 export function encodePuzzle(puzzle: Puzzle): string {
   const shared: Shared = {
@@ -36,10 +55,10 @@ export function decodePuzzle(text: string, now = Date.now()): Puzzle | { error: 
     return { error: 'Der Puzzle-Code ist unvollständig oder beschädigt.' };
   }
   const initial = shared.initial;
-  if (!initial || !initial.me || !initial.opp || !Array.isArray(initial.emz) || !Array.isArray(shared.solutions)) {
+  if (!isDuelState(initial) || !Array.isArray(shared.solutions) || !shared.solutions.every(isSolution)) {
     return { error: 'Der Puzzle-Code enthält keine gültige Stellung.' };
   }
-  const difficulty = (Math.min(5, Math.max(1, Math.round(Number(shared.difficulty) || 3))) as Difficulty);
+  const difficulty = Math.min(5, Math.max(1, Math.round(Number(shared.difficulty) || 3))) as Difficulty;
   return {
     id: createId(),
     title: String(shared.title ?? 'Importiertes Puzzle'),

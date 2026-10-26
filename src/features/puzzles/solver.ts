@@ -1,5 +1,5 @@
 import { movesMatch } from '@/features/duel/moves';
-import { applyMove, applyMoves, cloneDuel } from '@/features/duel/state';
+import { applyMove, applyMoves, boardCardIds, cloneDuel } from '@/features/duel/state';
 import type { DuelMove, DuelState } from '@/features/duel/types';
 
 import type { Puzzle } from './types';
@@ -146,4 +146,16 @@ export function validatePuzzle(puzzle: Puzzle): string[] {
     }
   }
   return problems;
+}
+
+/** Every passcode a puzzle shows: the position and all solution moves. */
+export function puzzleCardIds(puzzle: Puzzle): number[] {
+  const ids = new Set(boardCardIds(puzzle.initial));
+  for (const solution of puzzle.solutions) {
+    for (const move of solution.moves) {
+      ids.add(move.cardId);
+      for (const target of move.targets) ids.add(target.cardId);
+    }
+  }
+  return [...ids];
 }

@@ -1,5 +1,6 @@
 import { resolveBattle } from '@/features/duel/battle';
 import { buildMove, extraSummonAction, isError, resolvesToGy, type Intent } from '@/features/duel/builder';
+import { applySelection, cardOptions, dropOptions, mentionsTarget, tributeCount } from '@/features/duel/interactions';
 import { describeMove, movesMatch } from '@/features/duel/moves';
 import { applyMove, cardsIn, emptyDuel, locate, monstersOf, newInstance } from '@/features/duel/state';
 import type { DuelMove, DuelState, Side } from '@/features/duel/types';
@@ -205,5 +206,68 @@ describe('moves', () => {
     const attack: DuelMove = { ...base, action: 'attack', cardId: BEWD, targets: [{ cardId: SKULL, from: { side: 'opp', zone: 'monster' }, to: { side: 'opp', zone: 'gy' } }], lp: { me: 0, opp: -500 } };
     expect(describeMove(attack, nameOf)).toBe('Angriff: Blue-Eyes White Dragon greift Summoned Skull an (Gegner -500 LP)');
     expect(describeMove({ ...attack, actor: 'opp', action: 'direct_attack', targets: [], lp: { me: -3000, opp: 0 } }, nameOf)).toBe('Gegner – Direkter Angriff: Blue-Eyes White Dragon (du -3000 LP)');
+  });
+});
+
+describe('board interactions', () => {
+  const setup = () => {
+    const state = emptyDuel();
+    const blueEyes = newInstance(BEWD, 'me');
+    const raigeki = newInstance(RAIGEKI, 'me');
+    const mst = newInstance(MST, 'me');
+    const trap = newInstance(ID.imperm, 'me');
+    const thousand = newInstance(THOUSAND, 'me');
+    const wizard = newInstance(71625222, 'me');
+    state.me.hand.push(blueEyes, raigeki, mst, trap, wizard);
+    state.me.extra.push(thousand);
+    const celtic = place(state, 'me', 'monster', 0, CELTIC);
+    const skull = place(state, 'opp', 'monster', 2, SKULL);
+    return { state, blueEyes, raigeki, mst, trap, thousand, wizard, celtic, skull };
+  };
+  const ctx = (state: DuelState) => ({ state, cardOf, actor: 'me' as Side });
+  const keys = (options: { key: string }[]) => options.map((o) => o.key);
+
+  it('offers summons when a monster is dropped on a Monster Zone', () => {
+    const { state, blueEyes, thousand, wizard } = setup();
+    const options = dropOptions(ctx(state), blueEyes.uid, { side: 'me', zone: 'monster', index: 3 });
+    expect(keys(options)).toEqual(['normal_summon', 'set', 'ss_atk', 'ss_def']);
+    expect(options[0].select).toMatchObject({ field: 'tributes', min: 2, max: 2 });
+    const fusion = dropOptions(ctx(state), thousand.uid, { side: 'me', zone: 'emz', index: 0 });
+    expect(fusion[0].key).toBe('fusion_summon');
+    expect(fusion[0].select?.candidates).toContain(wizard.uid);
+    expect(fusion[0].select?.candidates).not.toContain(thousand.uid);
+  });
+
+  it('turns drops on the opponent into attacks or control changes', () => {
+    const { state, celtic, skull } = setup();
+    const attack = dropOptions(ctx(state), celtic.uid, { side: 'opp', zone: 'monster', index: 2 });
+    expect(attack).toHaveLength(1);
+    expect(attack[0].intent).toMatchObject({ kind: 'attack', targetUid: skull.uid });
+    expect(keys(dropOptions(ctx(state), celtic.uid, { side: 'opp', zone: 'hand' }))).toEqual(['direct_attack', 'to_hand']);
+    expect(keys(dropOptions(ctx(state), skull.uid, { side: 'me', zone: 'monster', index: 4 }))).toEqual(['take_control']);
+  });
+
+  it('knows spells, traps and targets', () => {
+    const { state, raigeki, mst, trap } = setup();
+    expect(keys(dropOptions(ctx(state), raigeki.uid, { side: 'me', zone: 'gy' }))).toEqual(['activate', 'discard']);
+    expect(dropOptions(ctx(state), raigeki.uid, { side: 'me', zone: 'spell', index: 0 })[0].select).toBeUndefined();
+    expect(dropOptions(ctx(state), mst.uid, { side: 'me', zone: 'spell', index: 0 })[0].select).toMatchObject({ field: 'targets', min: 0 });
+    expect(keys(dropOptions(ctx(state), trap.uid, { side: 'me', zone: 'spell', index: 0 }))).toEqual(['set']);
+    expect(dropOptions(ctx(state), trap.uid, { side: 'me', zone: 'monster', index: 1 })).toEqual([]);
+    expect(mentionsTarget(cardOf(MST))).toBe(true);
+    expect(mentionsTarget(cardOf(RAIGEKI))).toBe(false);
+    expect(tributeCount(cardOf(SKULL))).toBe(1);
+    expect(tributeCount(cardOf(THOUSAND))).toBe(0);
+  });
+
+  it('builds the tap menu of a monster and fills in the chosen target', () => {
+    const { state, celtic, skull } = setup();
+    const options = cardOptions(ctx(state), celtic.uid);
+    expect(keys(options).slice(0, 3)).toEqual(['attack', 'direct_attack', 'activate']);
+    const attack = options[0];
+    expect(attack.select?.candidates).toEqual([skull.uid]);
+    const intent = applySelection(attack.intent, 'targetUid', [skull.uid]);
+    expect(build(state, intent)).toMatchObject({ action: 'attack', lp: { me: -1100, opp: 0 } });
+    expect(keys(cardOptions(ctx(state), skull.uid))).toContain('take_control');
   });
 });
