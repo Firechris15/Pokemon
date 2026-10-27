@@ -10,12 +10,15 @@ export type Settings = {
   language: 'de' | 'en';
   /** Download full-size images of every card in a deck when the deck is opened. */
   prefetchDeckImages: boolean;
+  /** Claude model for match commentary (id from the Models API); null = newest Opus. */
+  analysisModel: string | null;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   banlist: 'tcg',
   language: 'de',
   prefetchDeckImages: true,
+  analysisModel: null,
 };
 
 type SettingsState = Settings & {

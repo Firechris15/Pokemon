@@ -184,4 +184,9 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_replays_created ON replays(created_at);
   `,
+  // v6: match analysis – key figures per replay, AI commentary (Claude API)
+  `
+  ALTER TABLE replays ADD COLUMN stats TEXT;
+  ALTER TABLE replays ADD COLUMN analysis TEXT;
+  `,
 ];

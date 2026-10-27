@@ -111,3 +111,19 @@ export function boardTarget(target: { side: Side; zone: string; index?: number }
       return null;
   }
 }
+
+/** Turns a revealed replay snapshot back into what the viewer saw: hidden cards become unknown. */
+export function maskHidden(snapshot: Snapshot): Snapshot {
+  const mask = (c: CardView): CardView =>
+    c.hidden ? { ...c, code: 0, type: 0, attack: null, defense: null, baseAttack: null, baseDefense: null, materials: c.materials.map(() => 0) } : c;
+  const player = (p: PlayerView): PlayerView => ({
+    ...p,
+    hand: p.hand.map(mask),
+    mzone: p.mzone.map((c) => c && mask(c)),
+    szone: p.szone.map((c) => c && mask(c)),
+    grave: p.grave.map(mask),
+    removed: p.removed.map(mask),
+    extra: p.extra.map(mask),
+  });
+  return { ...snapshot, players: [player(snapshot.players[0]), player(snapshot.players[1])] };
+}

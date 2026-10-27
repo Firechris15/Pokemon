@@ -1,5 +1,8 @@
 import { getDb } from '@/db/database';
+import type { MatchAnalysis } from '@/features/analysis/types';
 import type { Player, ReplayData } from '@/features/engine/types';
+
+import { matchStats, type MatchStats } from './stats';
 
 export type ReplayMode = 'ai' | 'puzzle';
 
@@ -20,7 +23,9 @@ export type ReplaySummary = {
   durationMs: number;
 };
 
-export type Replay = ReplaySummary & { data: ReplayData };
+export type Replay = ReplaySummary & { data: ReplayData; stats?: MatchStats | null; analysis?: MatchAnalysis | null };
+
+export type ReplayListItem = ReplaySummary & { stats: MatchStats | null; analysed: boolean };
 
 type Row = {
   id: string;
@@ -35,9 +40,11 @@ type Row = {
   turns: number;
   duration_ms: number;
   data: string;
+  stats: string | null;
+  analysis: string | null;
 };
 
-function toSummary(row: Row, data?: { viewer?: Player }): ReplaySummary {
+function toSummary(row: Omit<Row, 'data' | 'stats' | 'analysis'>, viewer: Player): ReplaySummary {
   return {
     id: row.id,
     createdAt: row.created_at,
@@ -47,18 +54,28 @@ function toSummary(row: Row, data?: { viewer?: Player }): ReplaySummary {
     oppDeck: row.opp_deck,
     aiLevel: row.ai_level,
     winner: row.winner === null ? null : (row.winner as Player),
-    viewer: data?.viewer ?? 0,
+    viewer,
     reason: row.reason,
     turns: row.turns,
     durationMs: row.duration_ms,
   };
 }
 
+const parse = <T>(json: string | null): T | null => {
+  if (!json) return null;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return null;
+  }
+};
+
 export async function saveReplay(replay: Replay): Promise<void> {
   const db = await getDb();
+  const stats = replay.stats ?? matchStats(replay.data, replay.viewer);
   await db.runAsync(
-    `INSERT OR REPLACE INTO replays (id, created_at, mode, title, my_deck, opp_deck, ai_level, winner, reason, turns, duration_ms, data)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO replays (id, created_at, mode, title, my_deck, opp_deck, ai_level, winner, reason, turns, duration_ms, data, stats, analysis)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     replay.id,
     replay.createdAt,
     replay.mode,
@@ -70,18 +87,33 @@ export async function saveReplay(replay: Replay): Promise<void> {
     replay.reason,
     replay.turns,
     Math.round(replay.durationMs),
-    JSON.stringify({ ...replay.data, viewer: replay.viewer })
+    JSON.stringify({ ...replay.data, viewer: replay.viewer }),
+    JSON.stringify(stats),
+    replay.analysis ? JSON.stringify(replay.analysis) : null
   );
 }
 
-/** Newest first; the bulky data column is only parsed for the viewer. */
-export async function listReplays(): Promise<ReplaySummary[]> {
+/** Newest first, with key figures; replays from before the statistics get them computed once. */
+export async function listReplays(): Promise<ReplayListItem[]> {
   const db = await getDb();
-  const rows = await db.getAllAsync<Omit<Row, 'data'> & { viewer: number | null }>(
-    `SELECT id, created_at, mode, title, my_deck, opp_deck, ai_level, winner, reason, turns, duration_ms,
-       json_extract(data, '$.viewer') AS viewer FROM replays ORDER BY created_at DESC`
+  const rows = await db.getAllAsync<Omit<Row, 'data' | 'analysis'> & { viewer: number | null; analysed: number }>(
+    `SELECT id, created_at, mode, title, my_deck, opp_deck, ai_level, winner, reason, turns, duration_ms, stats,
+       json_extract(data, '$.viewer') AS viewer, analysis IS NOT NULL AS analysed FROM replays ORDER BY created_at DESC`
   );
-  return rows.map((r) => ({ ...toSummary({ ...r, data: '' }), viewer: (r.viewer ?? 0) as Player }));
+  const items: ReplayListItem[] = [];
+  for (const row of rows) {
+    const summary = toSummary(row, (row.viewer ?? 0) as Player);
+    let stats = parse<MatchStats>(row.stats);
+    if (!stats) {
+      const replay = await getReplay(row.id);
+      if (replay) {
+        stats = matchStats(replay.data, replay.viewer);
+        await db.runAsync('UPDATE replays SET stats = ? WHERE id = ?', JSON.stringify(stats), row.id);
+      }
+    }
+    items.push({ ...summary, stats, analysed: Boolean(row.analysed) });
+  }
+  return items;
 }
 
 export async function getReplay(id: string): Promise<Replay | null> {
@@ -89,7 +121,12 @@ export async function getReplay(id: string): Promise<Replay | null> {
   const row = await db.getFirstAsync<Row>('SELECT * FROM replays WHERE id = ?', id);
   if (!row) return null;
   const data = JSON.parse(row.data) as ReplayData & { viewer?: Player };
-  return { ...toSummary(row, data), data };
+  return { ...toSummary(row, data.viewer ?? 0), data, stats: parse<MatchStats>(row.stats), analysis: parse<MatchAnalysis>(row.analysis) };
+}
+
+export async function saveAnalysis(id: string, analysis: MatchAnalysis | null): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('UPDATE replays SET analysis = ? WHERE id = ?', analysis ? JSON.stringify(analysis) : null, id);
 }
 
 export async function deleteReplay(id: string): Promise<void> {

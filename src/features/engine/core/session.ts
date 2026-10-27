@@ -133,12 +133,16 @@ export class DuelSession {
     this.env.lib.destroyDuel(this.handle);
   }
 
-  /** The field as one player sees it: hidden cards have code 0. */
-  snapshot(viewer: Player): Snapshot {
+  /**
+   * The field as one player sees it: hidden cards have code 0. With `reveal`
+   * every card is shown and the ones the viewer could not see are marked
+   * `hidden` (replay viewer: "show the opponent's cards").
+   */
+  snapshot(viewer: Player, reveal = false): Snapshot {
     const field = this.env.lib.duelQueryField(this.handle);
     // The field query carries the LP although ocgcore-wasm's typings omit them.
     const lpOf = (p: Player) => signedLp(Number((field.players[p] as unknown as { lp: number }).lp));
-    const players = ([0, 1] as Player[]).map((p) => this.playerView(p, viewer, lpOf(p))) as [PlayerView, PlayerView];
+    const players = ([0, 1] as Player[]).map((p) => this.playerView(p, viewer, lpOf(p), reveal)) as [PlayerView, PlayerView];
     return { viewer, players, turn: this.turn, turnPlayer: this.turnPlayer, phase: this.phase, chain: [...this.chain] };
   }
 
@@ -148,17 +152,17 @@ export class DuelSession {
     return info?.code ?? 0;
   }
 
-  private playerView(p: Player, viewer: Player, lp: number): PlayerView {
+  private playerView(p: Player, viewer: Player, lp: number, reveal: boolean): PlayerView {
     const query = (location: number) =>
       this.env.lib.duelQueryLocation(this.handle, { flags: QUERY_FLAGS as OcgQueryFlags, controller: p, location: location as OcgLocation });
     const list = (location: number) =>
       query(location)
-        .map((info, sequence) => (info ? this.cardView(info, p, location, sequence, viewer) : null))
+        .map((info, sequence) => (info ? this.cardView(info, p, location, sequence, viewer, reveal) : null))
         .filter((c): c is CardView => c !== null);
     const slots = (location: number, size: number) => {
       const result: (CardView | null)[] = Array(size).fill(null);
       query(location).forEach((info, sequence) => {
-        if (info && sequence < size && info.code) result[sequence] = this.cardView(info, p, location, sequence, viewer);
+        if (info && sequence < size && info.code) result[sequence] = this.cardView(info, p, location, sequence, viewer, reveal);
       });
       return result;
     };
@@ -174,15 +178,17 @@ export class DuelSession {
     };
   }
 
-  private cardView(info: Partial<OcgCardQueryInfo>, controller: Player, location: number, sequence: number, viewer: Player): CardView {
+  private cardView(info: Partial<OcgCardQueryInfo>, controller: Player, location: number, sequence: number, viewer: Player, reveal: boolean): CardView {
     const position = Number(info.position ?? Pos.FACEDOWN_DEFENSE);
     const faceUp = (position & Pos.FACEUP) !== 0;
     const isPublic = Boolean(info.isPublic);
     const onField = location === Loc.MZONE || location === Loc.SZONE;
-    const visible =
+    const seen =
       controller === viewer ? true : onField ? faceUp || isPublic : location === Loc.GRAVE ? true : location === Loc.REMOVED || location === Loc.EXTRA ? faceUp || isPublic : isPublic;
+    const visible = seen || reveal;
     const known = (v: number | undefined) => (visible && v !== undefined ? Number(v) : null);
     return {
+      ...(seen ? {} : { hidden: true }),
       code: visible ? Number(info.code ?? 0) : 0,
       controller,
       owner: (info.owner ?? controller) as Player,

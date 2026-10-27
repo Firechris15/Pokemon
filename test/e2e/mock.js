@@ -57,7 +57,38 @@ function placeholderSvg(id) {
 <text x="210" y="560" font-size="26" font-family="sans-serif" text-anchor="middle">#${id}</text></svg>`;
 }
 
-const state = { offline: false, api: [], images: 0, github: [] };
+const state = { offline: false, api: [], images: 0, github: [], claude: [] };
+
+// Claude API stand-in: two models (the app should pick the Opus one) and a
+// commentary that suggests another legal option at the first real decision.
+const MODEL_CAPS = {
+  structured_outputs: { supported: true },
+  thinking: { supported: true, types: { adaptive: { supported: true }, enabled: { supported: false } } },
+  effort: { supported: true, low: { supported: true }, medium: { supported: true }, high: { supported: true }, max: { supported: true } },
+};
+const CLAUDE_MODELS = [
+  { type: 'model', id: 'mock-opus-model', display_name: 'Mock Opus', created_at: '2026-01-01T00:00:00Z', max_input_tokens: 1000000, max_tokens: 64000, capabilities: MODEL_CAPS },
+  { type: 'model', id: 'mock-other-model', display_name: 'Mock Other', created_at: '2026-02-01T00:00:00Z', max_input_tokens: 1000000, max_tokens: 64000, capabilities: MODEL_CAPS },
+];
+const CLAUDE_CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
+
+function mockAnalysis(prompt) {
+  const blocks = prompt.split(/\n## E(\d+) /).slice(1);
+  let suggestion = null;
+  for (let i = 0; i < blocks.length && !suggestion; i += 2) {
+    const number = Number(blocks[i]);
+    const options = [...blocks[i + 1].matchAll(/^(\d+)\. (.*)$/gm)].map((m) => ({ n: Number(m[1]), label: m[2] }));
+    const chosen = Number((blocks[i + 1].match(/^Gewählt: (\d+)/m) ?? [])[1]);
+    const other = options.find((o) => o.n !== chosen && !o.label.startsWith('Zug beenden'));
+    if (other) suggestion = { decision: number, option: other.n, reason: `Statt Option ${chosen} wäre „${other.label}“ stärker gewesen.` };
+  }
+  return {
+    summary: 'Das Duell wurde in den ersten Zügen entschieden. Mehr Druck in Zug 1 hätte geholfen.',
+    turning_points: [{ turn: 1, text: 'Der erste Zug legte das Tempo fest.' }],
+    suggestions: suggestion ? [suggestion, { decision: 999, option: 1, reason: 'Diese Entscheidung gibt es nicht.' }] : [],
+    tips: ['Spiele deine Starter früh aus.', 'Halte eine Handtrap für den Zug des Gegners.'],
+  };
+}
 
 // EDOPro data (card database, scripts, strings) from the engine fixtures.
 const ENGINE = path.join(FIXTURES, 'engine');
@@ -92,6 +123,38 @@ async function install(context) {
     const file = engineFile(route.request().url());
     if (!file) return route.fulfill({ status: 404, headers: CORS, body: '404: Not Found' });
     return route.fulfill({ body: file.body, contentType: file.contentType, headers: CORS });
+  });
+  await context.route('https://api.anthropic.com/**', (route) => {
+    const request = route.request();
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CLAUDE_CORS });
+    if (state.offline) return route.abort('internetdisconnected');
+    const url = new URL(request.url());
+    const auth = request.headers()['authorization'] ?? request.headers()['x-api-key'] ?? '';
+    state.claude.push({ method: request.method(), path: url.pathname, auth, body: request.postDataJSON?.() ?? null, beta: request.headers()['anthropic-beta'] ?? '' });
+    if (auth.includes('sk-ant-invalid')) {
+      return route.fulfill({ status: 401, headers: CLAUDE_CORS, json: { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } } });
+    }
+    if (url.pathname === '/v1/models') {
+      return route.fulfill({ headers: CLAUDE_CORS, json: { data: CLAUDE_MODELS, has_more: false, first_id: CLAUDE_MODELS[0].id, last_id: CLAUDE_MODELS[1].id } });
+    }
+    if (url.pathname === '/v1/messages' && request.method() === 'POST') {
+      const body = request.postDataJSON();
+      const prompt = typeof body.messages[0].content === 'string' ? body.messages[0].content : body.messages[0].content.map((b) => b.text ?? '').join('');
+      return route.fulfill({
+        headers: CLAUDE_CORS,
+        json: {
+          id: 'msg_mock',
+          type: 'message',
+          role: 'assistant',
+          model: body.model,
+          content: [{ type: 'text', text: JSON.stringify(mockAnalysis(prompt)) }],
+          stop_reason: 'end_turn',
+          stop_sequence: null,
+          usage: { input_tokens: 12345, output_tokens: 678 },
+        },
+      });
+    }
+    return route.fulfill({ status: 404, headers: CLAUDE_CORS, json: { type: 'error', error: { type: 'not_found_error', message: 'not found' } } });
   });
   await context.route('https://images.ygoprodeck.com/**', (route) => {
     if (state.offline) return route.abort('internetdisconnected');

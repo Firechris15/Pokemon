@@ -20,7 +20,7 @@ const TILES = [
   { key: 'combos', title: 'Combos', subtitle: 'Combo-Routen lernen mit Quiz', icon: 'git-network', color: '#c06bd8', route: '/combos' },
   { key: 'puzzles', title: 'Puzzles', subtitle: 'Tägliche Puzzles mit Rating', icon: 'extension-puzzle', color: '#e5734b', route: '/puzzles' },
   { key: 'duel', title: 'KI-Duell', subtitle: 'Mit echten Regeln gegen die KI', icon: 'hardware-chip', color: '#4bc0b5', route: '/duel' },
-  { key: 'analysis', title: 'Analyse', subtitle: 'Replays und Match-Statistiken', icon: 'analytics', color: '#9aa4b5', phase: 'Phase 6' },
+  { key: 'analysis', title: 'Analyse', subtitle: 'Replays, Statistiken, KI-Kommentar', icon: 'analytics', color: '#9aa4b5', route: '/replays' },
 ] as const;
 
 export default function HomeScreen() {
@@ -68,9 +68,8 @@ export default function HomeScreen() {
                 subtitle={tile.subtitle}
                 icon={tile.icon}
                 color={tile.color}
-                badge={'phase' in tile ? tile.phase : badgeFor(tile.key)}
-                disabled={'phase' in tile}
-                onPress={'route' in tile ? () => router.push(tile.route) : undefined}
+                badge={badgeFor(tile.key)}
+                onPress={() => router.push(tile.route)}
               />
             ))
           : null}
