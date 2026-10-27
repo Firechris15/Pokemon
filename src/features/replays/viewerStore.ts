@@ -17,8 +17,8 @@ type ViewerState = {
   /** Revealed snapshot of the current frame (hidden cards are marked). */
   snapshot: Snapshot | null;
   playing: boolean;
-  /** Engine review in progress: decisions done / total. */
-  reviewProgress: { done: number; total: number } | null;
+  /** Engine review in progress: decisions done / total, started at (ms). */
+  reviewProgress: { done: number; total: number; startedAt: number } | null;
   strings: Map<number, string[]>;
   systemStrings: Map<number, string>;
   open: (replay: Replay) => Promise<void>;
@@ -28,6 +28,7 @@ type ViewerState = {
   verify: (suggestions: Suggestion[]) => Promise<SuggestionCheck[]>;
   /** Rates every decision against its alternatives; null if the engine failed. */
   review: () => Promise<ReplayReview | null>;
+  cancelReview: () => void;
   close: () => void;
 };
 
@@ -117,7 +118,7 @@ export const useReplayViewer = create<ViewerState>((set, get) => ({
   review() {
     const { replay } = get();
     if (!host || !replay) return Promise.resolve(null);
-    set({ reviewProgress: { done: 0, total: 0 } });
+    set({ reviewProgress: { done: 0, total: 0, startedAt: Date.now() } });
     return new Promise((resolve) => {
       reviewing.set(replay.id, (review) => {
         set({ reviewProgress: null });
@@ -125,6 +126,14 @@ export const useReplayViewer = create<ViewerState>((set, get) => ({
       });
       host!.send({ t: 'review', id: replay.id });
     });
+  },
+
+  cancelReview() {
+    const { replay } = get();
+    if (!replay) return;
+    host?.send({ t: 'cancelReview', id: replay.id });
+    reviewing.get(replay.id)?.(null);
+    reviewing.delete(replay.id);
   },
 
   close() {
@@ -161,9 +170,11 @@ function handleMessage(message: FromEngine) {
       waiting.get(id)?.(message.results);
       waiting.delete(id);
       break;
-    case 'reviewProgress':
-      useReplayViewer.setState({ reviewProgress: { done: message.done, total: message.total } });
+    case 'reviewProgress': {
+      const current = useReplayViewer.getState().reviewProgress;
+      if (current) useReplayViewer.setState({ reviewProgress: { ...current, done: message.done, total: message.total } });
       break;
+    }
     case 'reviewed':
       reviewing.get(id)?.(message.review);
       reviewing.delete(id);

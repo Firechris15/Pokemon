@@ -11,6 +11,7 @@ import { toOcgCard } from '@/features/engine/core/convert';
 import type { EngineEnv } from '@/features/engine/core/session';
 import type { EngineCard } from '@/features/engine/types';
 import type { EngineRuntime } from '@/features/engine/worker/controller';
+import { heapOf } from '@/features/engine/worker/heap';
 
 export const FIXTURES = path.resolve('test/fixtures/engine');
 
@@ -37,6 +38,7 @@ export function loadRuntime(): Promise<EngineRuntime> {
     flags: { mr5: OcgDuelMode.MODE_MR5, attackFirstTurn: OcgDuelMode.ATTACK_FIRST_TURN },
     matchesOpcode: (card: OcgCardData, opcodes: bigint[]) => cardMatchesOpcode(card, opcodes as never),
     now: () => Date.now(),
+    heap: heapOf(lib),
   }));
   return runtime;
 }
@@ -44,5 +46,5 @@ export function loadRuntime(): Promise<EngineRuntime> {
 export async function loadEnv(): Promise<EngineEnv> {
   const rt = await loadRuntime();
   const { cards } = fixtureCards();
-  return { lib: rt.lib, flags: rt.flags, cards: new Map(cards.map((c) => [c.code, toOcgCard(c)])), scripts: fixtureScripts(cards) };
+  return { lib: rt.lib, flags: rt.flags, heap: rt.heap, cards: new Map(cards.map((c) => [c.code, toOcgCard(c)])), scripts: fixtureScripts(cards) };
 }

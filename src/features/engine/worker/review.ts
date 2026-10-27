@@ -90,16 +90,7 @@ function playOption(env: EngineEnv, config: DuelConfig, responses: EngineRespons
       sim.respond(responses[i]);
       if (sim.prompt?.retry) return null;
     }
-    if (!sim.prompt) return null;
-    const turn = sim.turn;
-    sim.respond(response);
-    if (sim.prompt?.retry) return null;
-    const next = play();
-    for (let step = 0; step < PLAYOUT_STEPS && sim.prompt && !sim.ended && sim.turn === turn; step++) {
-      sim.respond(next(sim, sim.prompt.request.player));
-      if (sim.prompt?.retry) return null;
-    }
-    return outcome(sim.snapshot(viewer, true), viewer, sim.winner?.player ?? null, card);
+    return sim.prompt ? playOn(sim, response, viewer, play, card) : null;
   } finally {
     sim.destroy();
   }
@@ -116,43 +107,112 @@ export function verdictFor(chosen: Outcome, best: Outcome | null): { verdict: Re
   return { verdict: loss < 0.005 ? 'best' : 'good', loss };
 }
 
-/** Compares the chosen answer of one decision with every alternative, all played on with the same AI. */
-export function reviewDecision(
-  env: EngineEnv,
-  config: DuelConfig,
-  responses: EngineResponse[],
-  viewer: Player,
-  decision: DecisionPoint,
-  play: PlayFactory,
-  card: (code: number) => CardInfo | undefined
-): DecisionReview | null {
-  const chosenKey = optionKey(decision.request, decision.response);
-  const options = reviewOptions(decision.request);
-  // Nothing to choose between: not a real decision.
-  if (options.length < 2) return null;
-  const chosen = playOption(env, config, responses, decision.index, decision.response, viewer, play, card);
-  if (!chosen) return null;
-  let best: { response: EngineResponse; outcome: Outcome } | null = null;
-  let compared = 1;
-  for (const response of options) {
-    if (optionKey(decision.request, response) === chosenKey) continue;
-    const result = playOption(env, config, responses, decision.index, response, viewer, play, card);
-    if (!result) continue;
-    compared++;
-    if (result.score > chosen.score && (!best || result.score > best.outcome.score)) best = { response, outcome: result };
+/**
+ * Engine review of one replay. Decisions must be reviewed in the order of
+ * the duel: a base session follows the recorded duel, and at each decision
+ * its state is saved once and restored for every option (see
+ * DuelSession.save) instead of building a new duel and replaying all
+ * responses per option. Without access to the engine memory it falls back
+ * to replaying.
+ */
+export class Reviewer {
+  private readonly base: DuelSession | null;
+  private next = 0;
+  /** Reused for every saved state. */
+  private buffer: Uint8Array | undefined;
+
+  constructor(
+    private readonly env: EngineEnv,
+    private readonly config: DuelConfig,
+    private readonly responses: EngineResponse[],
+    private readonly viewer: Player,
+    /** AI for the playouts of a decision (same seed for all its options). */
+    private readonly playFor: (decision: number) => PlayFactory,
+    private readonly card: (code: number) => CardInfo | undefined
+  ) {
+    this.base = env.heap ? new DuelSession(env, config, false) : null;
   }
-  const { verdict, loss } = verdictFor(chosen, best?.outcome ?? null);
-  return {
-    index: decision.index,
-    frame: decision.frame,
-    turn: decision.board.turn,
-    verdict,
-    loss,
-    compared,
-    chosen: { response: decision.response, outcome: chosen },
-    // Only worth showing when it is clearly better.
-    best: verdict === 'best' || verdict === 'good' ? null : best,
-  };
+
+  /** Compares the chosen answer with every alternative, all played on with the same AI. */
+  review(decision: DecisionPoint): DecisionReview | null {
+    const chosenKey = optionKey(decision.request, decision.response);
+    const options = reviewOptions(decision.request);
+    // Nothing to choose between: not a real decision.
+    if (options.length < 2) return null;
+    const play = this.playFor(decision.index);
+    const simulate = this.simulator(decision.index, play);
+    if (!simulate) return null;
+    try {
+      const chosen = simulate(decision.response);
+      if (!chosen) return null;
+      let best: { response: EngineResponse; outcome: Outcome } | null = null;
+      let compared = 1;
+      for (const response of options) {
+        if (optionKey(decision.request, response) === chosenKey) continue;
+        const result = simulate(response);
+        if (!result) continue;
+        compared++;
+        if (result.score > chosen.score && (!best || result.score > best.outcome.score)) best = { response, outcome: result };
+      }
+      const { verdict, loss } = verdictFor(chosen, best?.outcome ?? null);
+      return {
+        index: decision.index,
+        frame: decision.frame,
+        turn: decision.board.turn,
+        verdict,
+        loss,
+        compared,
+        chosen: { response: decision.response, outcome: chosen },
+        // Only worth showing when it is clearly better.
+        best: verdict === 'best' || verdict === 'good' ? null : best,
+      };
+    } finally {
+      simulate.done();
+    }
+  }
+
+  destroy(): void {
+    this.base?.destroy();
+  }
+
+  /** Plays one option from the decision on; done() puts the base session back to the decision. */
+  private simulator(decision: number, play: PlayFactory): (((response: EngineResponse) => Outcome | null) & { done: () => void }) | null {
+    const base = this.base;
+    if (!base) {
+      const replay = (response: EngineResponse) => playOption(this.env, this.config, this.responses, decision, response, this.viewer, play, this.card);
+      return Object.assign(replay, { done: () => undefined });
+    }
+    if (decision < this.next) throw new Error('Entscheidungen müssen in der Reihenfolge des Duells geprüft werden.');
+    while (this.next < decision) {
+      if (!base.prompt) return null;
+      base.respond(this.responses[this.next++]);
+      if (base.prompt?.retry) return null;
+    }
+    if (!base.prompt) return null;
+    const saved = base.save(this.buffer);
+    this.buffer = saved.memory;
+    // The first option starts from the saved point already; every later one first goes back to it.
+    let dirty = false;
+    const fork = (response: EngineResponse) => {
+      if (dirty) base.restore(saved);
+      dirty = true;
+      return playOn(base, response, this.viewer, play, this.card);
+    };
+    return Object.assign(fork, { done: () => dirty && base.restore(saved) });
+  }
+}
+
+/** Answers the current prompt with `response` and lets the AI play until the turn ends; null = not accepted. */
+function playOn(sim: DuelSession, response: EngineResponse, viewer: Player, play: PlayFactory, card: (code: number) => CardInfo | undefined): Outcome | null {
+  const turn = sim.turn;
+  sim.respond(response);
+  if (sim.prompt?.retry) return null;
+  const next = play();
+  for (let step = 0; step < PLAYOUT_STEPS && sim.prompt && !sim.ended && sim.turn === turn; step++) {
+    sim.respond(next(sim, sim.prompt.request.player));
+    if (sim.prompt?.retry) return null;
+  }
+  return outcome(sim.snapshot(viewer, true), viewer, sim.winner?.player ?? null, card);
 }
 
 /** Like Chess.com's accuracy: 100 % for best moves, 0 % for blunders. */
