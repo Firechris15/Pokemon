@@ -8,6 +8,7 @@ import createCore, { cardMatchesOpcode, OcgDuelMode } from 'ocgcore-wasm';
 
 import type { FromEngine, ToEngine } from '../types';
 import { EngineController } from './controller';
+import { heapOf } from './heap';
 
 type WebViewBridge = { postMessage: (message: string) => void };
 declare const self: {
@@ -32,6 +33,7 @@ const controller = createCore({ sync: true })
           flags: { mr5: OcgDuelMode.MODE_MR5, attackFirstTurn: OcgDuelMode.ATTACK_FIRST_TURN },
           matchesOpcode: (card, opcodes) => cardMatchesOpcode(card, opcodes as never),
           now: () => performance.now(),
+          heap: heapOf(lib),
         },
         post,
         { aiDelayMs: 450 }

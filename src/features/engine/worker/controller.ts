@@ -8,7 +8,7 @@ import { toOcgCard } from '../core/convert';
 import { DuelSession, type EngineEnv } from '../core/session';
 import type { DecisionReview, DuelConfig, EngineResponse, FromEngine, LogEntry, Player, ReplayData, Suggestion, ToEngine } from '../types';
 import { checkSuggestion, runReplay, type ReplayRun } from './replay';
-import { reviewDecision, summarize, type PlayFactory } from './review';
+import { Reviewer, summarize, type PlayFactory } from './review';
 
 export type EngineRuntime = {
   lib: OcgCoreSync;
@@ -16,6 +16,8 @@ export type EngineRuntime = {
   /** ocgcore-wasm's opcode check for card declarations. */
   matchesOpcode: (card: OcgCardData, opcodes: bigint[]) => boolean;
   now: () => number;
+  /** The engine's WebAssembly memory, for saving and restoring duels (engine review). */
+  heap?: () => Uint8Array;
 };
 
 // EDOPro victory reasons (strings.conf "!victory"); -1 = surrender in this app.
@@ -47,6 +49,8 @@ export class EngineController {
   private memories = new Map<Player, AiMemory>();
   private rng: Rng = Math.random;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** The engine review in progress (null = none or cancelled). */
+  private reviewRun: object | null = null;
   /** The replay open in the viewer (independent of a running duel). */
   private replay: { id: string; config: DuelConfig; responses: EngineResponse[]; viewer: Player; run: ReplayRun } | null = null;
 
@@ -65,6 +69,7 @@ export class EngineController {
           this.env = {
             lib: this.runtime.lib,
             flags: this.runtime.flags,
+            heap: this.runtime.heap,
             cards: new Map(message.cards.map((c) => [c.code, toOcgCard(c)])),
             scripts: new Map(message.scripts),
           };
@@ -93,6 +98,7 @@ export class EngineController {
         case 'frame':
         case 'verify':
         case 'review':
+        case 'cancelReview':
         case 'closeReplay':
           this.handleReplay(message);
           break;
@@ -102,9 +108,14 @@ export class EngineController {
     }
   }
 
-  private handleReplay(message: Extract<ToEngine, { t: 'replay' | 'frame' | 'verify' | 'review' | 'closeReplay' }>) {
+  private handleReplay(message: Extract<ToEngine, { t: 'replay' | 'frame' | 'verify' | 'review' | 'cancelReview' | 'closeReplay' }>) {
     if (message.t === 'closeReplay') {
       this.replay = null;
+      this.reviewRun = null;
+      return;
+    }
+    if (message.t === 'cancelReview') {
+      this.reviewRun = null;
       return;
     }
     try {
@@ -155,31 +166,47 @@ export class EngineController {
 
   /**
    * Engine review of all the viewer's decisions. Runs in slices so frame
-   * requests of the replay viewer still get answered, and reports progress.
+   * requests of the replay viewer still get answered, reports progress and
+   * stops when cancelled or when the replay is closed.
    */
   private review(replay: NonNullable<EngineController['replay']>) {
     const { run } = replay;
     const decisions = run.decisions.filter((d) => run.diverged === null || d.index < run.diverged);
+    const reviewer = new Reviewer(this.env!, replay.config, replay.responses, replay.viewer, (index) => this.playFactory(replay.config, index), this.cardInfo);
+    const token = {};
+    this.reviewRun = token;
     const results: DecisionReview[] = [];
     let next = 0;
+    const active = () => this.replay === replay && this.reviewRun === token;
     const slice = () => {
-      if (this.replay !== replay) return;
+      if (!active()) {
+        reviewer.destroy();
+        return;
+      }
       try {
         const until = this.runtime.now() + 40;
         while (next < decisions.length && this.runtime.now() < until) {
-          const d = decisions[next++];
-          const result = reviewDecision(this.env!, replay.config, replay.responses, replay.viewer, d, this.playFactory(replay.config, d.index), this.cardInfo);
+          const result = reviewer.review(decisions[next++]);
           if (result) results.push(result);
         }
       } catch (error) {
+        reviewer.destroy();
+        this.reviewRun = null;
         this.post({ t: 'replayError', id: replay.id, message: error instanceof Error ? error.message : String(error) });
         return;
       }
       this.post({ t: 'reviewProgress', id: replay.id, done: next, total: decisions.length });
-      if (next < decisions.length) setTimeout(slice, 0);
-      else this.post({ t: 'reviewed', id: replay.id, review: summarize(results, run.diverged) });
+      if (next < decisions.length) {
+        setTimeout(slice, 0);
+        return;
+      }
+      reviewer.destroy();
+      this.reviewRun = null;
+      this.post({ t: 'reviewed', id: replay.id, review: summarize(results, run.diverged) });
     };
-    slice();
+    // Show the total right away, before the first (possibly slow) decision.
+    this.post({ t: 'reviewProgress', id: replay.id, done: 0, total: decisions.length });
+    setTimeout(slice, 0);
   }
 
   private start(config: DuelConfig, viewer: Player, aiThinkMs?: number) {

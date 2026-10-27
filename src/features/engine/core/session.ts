@@ -15,6 +15,22 @@ export type EngineEnv = {
   scripts: Map<string, string>;
   /** Duel mode flags from ocgcore-wasm (Master Rule 5, attack on the first turn). */
   flags: { mr5: bigint; attackFirstTurn: bigint };
+  /** The engine's WebAssembly memory (current view); lets sessions be saved and restored. */
+  heap?: () => Uint8Array;
+};
+
+/** A saved point of a session: the whole engine memory plus the session's own state. */
+export type SavedSession = {
+  memory: Uint8Array;
+  responses: number;
+  log: number;
+  prompt: Prompt | null;
+  winner: { player: Player; reason: number } | null;
+  turn: number;
+  turnPlayer: Player;
+  phase: number;
+  chain: ChainLinkView[];
+  hints: [number | null, number | null];
 };
 
 const PROCESS_END = 0;
@@ -117,6 +133,53 @@ export class DuelSession {
       if (copy.prompt?.retry) throw new Error('Replay weicht vom Original ab.');
     }
     return copy;
+  }
+
+  /** Whether save()/restore() work in this environment. */
+  get canSave(): boolean {
+    return Boolean(this.env.heap);
+  }
+
+  /**
+   * Saves this point of the duel. All engine state (Lua included) lives in
+   * the WebAssembly memory, so a copy of it is a complete snapshot – much
+   * faster than building a new duel and replaying every response.
+   * Only valid between calls into the engine, with no other duel created in between.
+   */
+  save(into?: Uint8Array): SavedSession {
+    if (!this.env.heap) throw new Error('Speichern wird hier nicht unterstützt.');
+    const heap = this.env.heap();
+    // Reusing a buffer of the right size avoids allocating the whole memory again for every save.
+    const memory = into && into.length === heap.length ? into : new Uint8Array(heap.length);
+    memory.set(heap);
+    return {
+      memory,
+      responses: this.responses.length,
+      log: this.log.length,
+      prompt: this.prompt,
+      winner: this.winner,
+      turn: this.turn,
+      turnPlayer: this.turnPlayer,
+      phase: this.phase,
+      chain: [...this.chain],
+      hints: [...this.hints],
+    };
+  }
+
+  restore(saved: SavedSession): void {
+    if (!this.env.heap) throw new Error('Wiederherstellen wird hier nicht unterstützt.');
+    // The memory may have grown since; the part beyond the saved size is unused again afterwards.
+    this.env.heap().set(saved.memory);
+    this.responses.length = saved.responses;
+    this.log.length = saved.log;
+    this.prompt = saved.prompt;
+    this.winner = saved.winner;
+    this.turn = saved.turn;
+    this.turnPlayer = saved.turnPlayer;
+    this.phase = saved.phase;
+    this.chain = [...saved.chain];
+    this.hints[0] = saved.hints[0];
+    this.hints[1] = saved.hints[1];
   }
 
   /** Ends the duel without the engine (surrender, abort). */

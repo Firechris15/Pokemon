@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
@@ -40,11 +40,13 @@ export function EngineReviewView({ replay, info, names, onShowFrame }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
+  const cancelled = useRef(false);
   const run = async () => {
     setError(null);
+    cancelled.current = false;
     const result = await useReplayViewer.getState().review();
     if (!result) {
-      setError('Die Engine-Analyse ist fehlgeschlagen. Bitte erneut versuchen.');
+      if (!cancelled.current) setError('Die Engine-Analyse ist fehlgeschlagen. Bitte erneut versuchen.');
       return;
     }
     await saveReview(replay.id, result);
@@ -56,7 +58,19 @@ export function EngineReviewView({ replay, info, names, onShowFrame }: Props) {
       <View style={styles.center} testID="review-running">
         <AppText>Die Engine spielt deine Entscheidungen durch …</AppText>
         <ProgressBar value={progress.total ? progress.done / progress.total : null} />
-        <AppText variant="small">{progress.total ? `Entscheidung ${progress.done} von ${progress.total}` : 'Wird vorbereitet …'}</AppText>
+        <AppText variant="small" testID="review-progress">
+          {progress.total ? `Entscheidung ${progress.done} von ${progress.total}${remaining(progress)}` : 'Wird vorbereitet …'}
+        </AppText>
+        <Button
+          testID="review-cancel"
+          label="Abbrechen"
+          icon="close"
+          variant="ghost"
+          onPress={() => {
+            cancelled.current = true;
+            useReplayViewer.getState().cancelReview();
+          }}
+        />
       </View>
     );
   }
@@ -127,6 +141,13 @@ export function EngineReviewView({ replay, info, names, onShowFrame }: Props) {
       {error ? <AppText style={{ color: colors.danger }}>{error}</AppText> : null}
     </View>
   );
+}
+
+/** " · noch etwa 20 s", estimated from the decisions done so far. */
+function remaining(p: { done: number; total: number; startedAt: number }): string {
+  if (p.done === 0 || p.done >= p.total) return '';
+  const left = ((Date.now() - p.startedAt) / p.done) * (p.total - p.done) / 1000;
+  return left < 5 ? ' · gleich fertig' : left < 90 ? ` · noch etwa ${Math.round(left / 5) * 5} s` : ` · noch etwa ${Math.round(left / 60)} min`;
 }
 
 const outcomeText = (o: Outcome) =>

@@ -9,7 +9,7 @@ import { PRESET_DECKS } from '@/features/engine/presetDecks';
 import type { DuelConfig, EngineResponse, FromEngine, Player, ReplayData, SelectIdleCmd } from '@/features/engine/types';
 import { EngineController } from '@/features/engine/worker/controller';
 import { runReplay } from '@/features/engine/worker/replay';
-import { reviewDecision, reviewOptions, summarize, verdictFor } from '@/features/engine/worker/review';
+import { Reviewer, reviewOptions, summarize, verdictFor } from '@/features/engine/worker/review';
 import { samplePuzzles } from '@/features/puzzles/samples';
 import { matchStats } from '@/features/replays/stats';
 import { seededRng } from '@/lib/random';
@@ -219,26 +219,51 @@ test('a full duel review finishes and every decision gets a verdict', async () =
     const c = env.cards.get(code);
     return c ? { type: Number(c.type), attack: c.attack, defense: c.defense, level: c.level } : undefined;
   };
-  const play = () => {
-    const ctx = aiContext(env, new DuelSession(env, config), 0, 9);
-    return (sim: DuelSession, player: Player) => {
-      ctx.me = player;
-      ctx.snapshot = sim.snapshot(player);
-      return respond(ctx, sim.prompt!);
-    };
+  const playFor = (index: number) => () => {
+    const memory = newMemory();
+    const rng = seededRng(index);
+    return (sim: DuelSession, player: Player) => respond({ me: player, snapshot: sim.snapshot(player), card, rng, announce: () => 0, memory }, sim.prompt!);
   };
-  const started = Date.now();
-  const reviews = run.decisions.map((d) => reviewDecision(env, config, responses, 0, d, play, card)).filter((r) => r !== null);
-  const review = summarize(reviews, run.diverged);
-  const ms = Date.now() - started;
-  assert.equal(reviews.length, run.decisions.filter((d) => reviewOptions(d.request).length > 1).length);
-  assert.equal(Object.values(review.counts).reduce((a, b) => a + b, 0), reviews.length);
+  const reviewAll = (e: EngineEnv) => {
+    const reviewer = new Reviewer(e, config, responses, 0, playFor, card);
+    const started = Date.now();
+    const reviews = run.decisions.map((d) => reviewer.review(d)).filter((r) => r !== null);
+    reviewer.destroy();
+    return { reviews, ms: Date.now() - started };
+  };
+  // Saving/restoring the engine memory gives the same verdicts as replaying every option.
+  const fast = reviewAll(env);
+  const slow = reviewAll({ ...env, heap: undefined });
+  assert.deepEqual(fast.reviews, slow.reviews);
+  const review = summarize(fast.reviews, run.diverged);
+  assert.equal(fast.reviews.length, run.decisions.filter((d) => reviewOptions(d.request).length > 1).length);
+  assert.equal(Object.values(review.counts).reduce((a, b) => a + b, 0), fast.reviews.length);
   assert.ok(review.accuracy >= 0 && review.accuracy <= 100);
-  for (const r of reviews) {
+  for (const r of fast.reviews) {
     assert.ok(r.compared >= 1);
     if (r.best) assert.ok(r.best.outcome.score > r.chosen.outcome.score);
   }
-  console.log(`# reviewed ${reviews.length} decisions (${run.decisions.reduce((n, d) => n + reviewOptions(d.request).length, 0)} options, ${responses.length} responses) in ${ms} ms, accuracy ${review.accuracy} %`);
+  console.log(`# reviewed ${fast.reviews.length} decisions (${responses.length} responses): ${fast.ms} ms with saved states, ${slow.ms} ms replaying, accuracy ${review.accuracy} %`);
+});
+
+test('a saved duel continues exactly like the original after restores', async () => {
+  const env = await loadEnv();
+  const { config, responses, session } = recordDuel(env, 14);
+  const final = session.snapshot(0, true);
+  session.destroy();
+  const base = new DuelSession(env, config, false);
+  for (let i = 0; i < responses.length; i++) {
+    if (i % 5 === 0 && base.prompt) {
+      const saved = base.save();
+      // Wander off: play something else for a few steps, then come back.
+      const other = reviewOptions(base.prompt.request).at(-1);
+      if (other) base.respond(other);
+      base.restore(saved);
+    }
+    base.respond(responses[i]);
+  }
+  assert.deepEqual(base.snapshot(0, true), final);
+  base.destroy();
 });
 
 test('review verdicts and options', () => {

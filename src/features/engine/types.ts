@@ -323,6 +323,7 @@ export type ToEngine =
   | { t: 'frame'; id: string; index: number }
   | { t: 'verify'; id: string; suggestions: Suggestion[] }
   | { t: 'review'; id: string }
+  | { t: 'cancelReview'; id: string }
   | { t: 'closeReplay' };
 
 export type FromEngine =
