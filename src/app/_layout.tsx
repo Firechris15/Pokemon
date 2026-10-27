@@ -94,7 +94,7 @@ export default function RootLayout() {
                 <Stack.Screen name="puzzles/edit/[id]" options={{ title: 'Puzzle-Editor' }} />
                 <Stack.Screen name="duel/index" options={{ title: 'KI-Duell' }} />
                 <Stack.Screen name="duel/play" options={{ title: 'Duell', gestureEnabled: false }} />
-                <Stack.Screen name="replays/index" options={{ title: 'Replays' }} />
+                <Stack.Screen name="replays/index" options={{ title: 'Analyse' }} />
                 <Stack.Screen name="replays/[id]" options={{ title: 'Replay' }} />
                 <Stack.Screen name="cards" options={{ title: 'Kartendatenbank' }} />
                 <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />

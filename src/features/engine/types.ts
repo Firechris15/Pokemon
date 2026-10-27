@@ -165,6 +165,8 @@ export type CardView = {
   /** Xyz material passcodes (0 = unknown). */
   materials: number[];
   isPublic: boolean;
+  /** Revealed snapshot (replays): the viewer could not see this card during the duel. */
+  hidden?: boolean;
 };
 
 export type PlayerView = {
@@ -219,6 +221,67 @@ export type ReplayData = {
   turns: number;
 };
 
+// ---- Replays and analysis ----------------------------------------------------------
+
+/** One step of a replay; the snapshot itself is fetched from the engine on demand. */
+export type FrameMeta = {
+  turn: number;
+  turnPlayer: Player;
+  phase: number;
+  /** LP of player 0 and 1. */
+  lp: [number, number];
+  /** Number of log entries that happened up to this frame. */
+  logEnd: number;
+  /** Index of the next response (= decisions taken so far). */
+  response: number;
+};
+
+/** Compact view of one side of the field for analysis prompts. */
+export type BoardSide = {
+  lp: number;
+  /** Hand passcodes, 0 = unknown to the viewer. */
+  hand: number[];
+  deck: number;
+  monsters: { code: number; zone: number; position: number; attack: number | null; defense: number | null; materials: number }[];
+  spells: { code: number; zone: number; faceUp: boolean }[];
+  grave: number[];
+  banished: number[];
+  extra: number;
+};
+
+/** The field from the viewer's side when a decision was taken. */
+export type BoardSummary = { turn: number; myTurn: boolean; phase: number; me: BoardSide; opp: BoardSide; chain: { code: number; mine: boolean }[] };
+
+/** A decision the app user took in a replay. */
+export type DecisionPoint = {
+  /** Index into the replay's responses. */
+  index: number;
+  /** Frame showing the field at this decision. */
+  frame: number;
+  request: SelectRequest;
+  hint: number | null;
+  response: EngineResponse;
+  board: BoardSummary;
+};
+
+export type ReplayInfo = {
+  frames: FrameMeta[];
+  decisions: DecisionPoint[];
+  /** Response index where the engine no longer accepts the recorded duel (card scripts changed); null = complete. */
+  diverged: number | null;
+};
+
+/** An alternative move to check: answer `response` at the decision with this response index. */
+export type Suggestion = { decision: number; response: EngineResponse };
+
+/** Result of a line from the viewer's side: [me, opponent]. */
+export type Outcome = { lp: [number, number]; field: [number, number]; hand: [number, number]; winner: 'me' | 'opp' | null; score: number };
+
+export type SuggestionCheck =
+  | { status: 'illegal' }
+  | { status: 'unknown'; reason: string }
+  | { status: 'ok'; turn: number; actual: Outcome; alternative: Outcome };
+
 // ---- Worker protocol -------------------------------------------------------------
 
 export type ToEngine =
@@ -227,7 +290,11 @@ export type ToEngine =
   | { t: 'start'; config: DuelConfig; viewer: Player; aiThinkMs?: number }
   | { t: 'respond'; response: EngineResponse }
   | { t: 'surrender' }
-  | { t: 'stop' };
+  | { t: 'stop' }
+  | { t: 'replay'; id: string; config: DuelConfig; responses: EngineResponse[]; viewer: Player }
+  | { t: 'frame'; id: string; index: number }
+  | { t: 'verify'; id: string; suggestions: Suggestion[] }
+  | { t: 'closeReplay' };
 
 export type FromEngine =
   | { t: 'ready' }
@@ -241,4 +308,9 @@ export type FromEngine =
       missingScripts: string[];
     }
   | { t: 'end'; snapshot: Snapshot; replay: ReplayData }
-  | { t: 'error'; message: string };
+  | { t: 'error'; message: string }
+  | { t: 'replayInfo'; id: string; info: ReplayInfo }
+  /** Revealed snapshot (hidden cards marked) of one replay frame. */
+  | { t: 'frame'; id: string; index: number; snapshot: Snapshot }
+  | { t: 'verified'; id: string; results: SuggestionCheck[] }
+  | { t: 'replayError'; id: string; message: string };

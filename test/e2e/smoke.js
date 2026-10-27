@@ -53,7 +53,8 @@ const YDK = `#created by test
   const errors = [];
   // Scripts that do not exist upstream (e.g. Normal Monsters) answer 404 – expected; any other 404 is an error.
   page.on('console', (m) => {
-    if (m.type() === 'error' && !m.text().startsWith('Failed to load resource: the server responded with a status of 404')) errors.push(`[console] ${m.text()}`);
+    // 404: card scripts that do not exist upstream; 401: the deliberately invalid Claude API key below.
+    if (m.type() === 'error' && !/^Failed to load resource: the server responded with a status of (404|401)/.test(m.text())) errors.push(`[console] ${m.text()}`);
   });
   page.on('response', (r) => {
     if (r.status() === 404 && !r.url().startsWith('https://raw.githubusercontent.com/ProjectIgnis/CardScripts/')) errors.push(`[404] ${r.url()}`);
@@ -592,9 +593,25 @@ const YDK = `#created by test
 
   // ---- Phase 5: duel against the AI with the rules engine ---------------------------
   const passChains = async () => {
-    // Optional chain chances (e.g. a hand trap) – pass them in this test.
-    if (await page.getByTestId('chain-pass').count()) await page.getByTestId('chain-pass').click();
-    if (await page.getByTestId('prompt-no').count()) await page.getByTestId('prompt-no').click();
+    // The random hand can lead to engine questions: pass chain chances and optional effects,
+    // otherwise take the first option (position, zone, number, card selection).
+    for (const id of ['chain-pass', 'prompt-no', 'option-0', 'place-0', 'number-0']) {
+      if (await page.getByTestId(id).count()) return page.getByTestId(id).click();
+    }
+    const position = page.locator('[data-testid^="position-"]');
+    if (await position.count()) return position.first().click();
+    if (await page.getByTestId('instance-sheet').count()) {
+      const items = page.locator('[data-testid^="sheet-item-"]');
+      for (let i = 0; i < (await items.count()) && !(await page.getByTestId('sheet-confirm').isEnabled()); i++) await items.nth(i).click();
+      if (await page.getByTestId('sheet-confirm').isEnabled()) await page.getByTestId('sheet-confirm').click();
+    }
+  };
+  const endTurn = async () => {
+    for (let i = 0; i < 60 && !(await page.getByTestId('phase-to-ep').count()); i++) {
+      await passChains();
+      await page.waitForTimeout(500);
+    }
+    await page.getByTestId('phase-to-ep').click();
   };
   await page.goto(`${BASE}/`);
   await page.getByTestId('tile-duel').click();
@@ -629,7 +646,7 @@ const YDK = `#created by test
   assert(played, 'a card from the hand was summoned or set via the engine');
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SHOTS, '27-duel-my-turn.png') });
-  await page.getByTestId('phase-to-ep').click();
+  await endTurn();
   for (let i = 0; i < 180 && !(await page.getByTestId('duel-turn').innerText()).startsWith('Zug 3 · Du'); i++) {
     if (await page.getByTestId('duel-result').count()) break;
     await passChains();
@@ -645,10 +662,64 @@ const YDK = `#created by test
   await page.getByTestId('duel-result').waitFor({ timeout: 30000 });
   assert(/Verloren|Gewonnen/.test(await page.getByTestId('duel-result').innerText()), 'the duel ended');
   await page.waitForTimeout(500);
-  await page.goto(`${BASE}/replays`);
+  // ---- Phase 6: analysis – statistics, replay viewer, AI commentary -------------------
+  await page.goto(`${BASE}/`);
+  await page.getByTestId('tile-analysis').click();
+  await page.getByTestId('overall-stats').waitFor();
+  assert((await page.getByTestId('overall-stats').innerText()).includes('DUELLE\n1'), 'overall statistics count the duel');
+  await page.screenshot({ path: path.join(SHOTS, '30-analysis-overall.png') });
+  await page.getByTestId('tab-replays').click();
   await page.locator('[data-testid^="replay-"]').first().click();
+  await page.getByTestId('replay-turn').getByText(/^Zug 1/).waitFor({ timeout: 60000 });
   await page.getByTestId('replay-log').waitFor();
-  assert(/ZUG 1/i.test(await page.getByTestId('replay-log').innerText()), 'replay stored with the full action log');
+  assert((await page.getByTestId('replay-turn').innerText()).includes('Zug 1 · Du'), 'replay starts at your first turn');
+  const logAtStart = (await page.getByTestId('replay-log').innerText()).split('\n').length;
+  await page.getByTestId('replay-turn-2').click();
+  await page.getByTestId('replay-turn').getByText(/^Zug 2 · Gegner/).waitFor();
+  assert((await page.getByTestId('replay-log').innerText()).split('\n').length > logAtStart, 'the log follows the replay');
+  await page.getByTestId('replay-next').click();
+  await page.waitForTimeout(300);
+  const hidden = await page.locator('[data-testid^="hand-opp-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
+  await page.getByTestId('replay-reveal').click();
+  await page.waitForTimeout(400);
+  const revealed = await page.locator('[data-testid^="hand-opp-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
+  assert(hidden.every((id) => id.endsWith('-0')) && revealed.length > 0 && revealed.every((id) => !id.endsWith('-0')), 'the AI hand can be revealed in the replay');
+  await page.screenshot({ path: path.join(SHOTS, '31-replay-viewer.png') });
+  await page.getByTestId('replay-end').click();
+  await page.waitForTimeout(400);
+  assert(/Du hast verloren|Du hast gewonnen/.test(await page.getByTestId('replay-log').innerText()), 'replay plays to the end of the duel');
+  await page.getByTestId('tab-stats').click();
+  await page.getByTestId('match-stats').waitFor();
+  await page.getByTestId('lp-table-toggle').click();
+  assert((await page.getByTestId('lp-table').innerText()).includes('Start'), 'LP per turn as a table');
+  await page.screenshot({ path: path.join(SHOTS, '32-match-stats.png') });
+
+  // AI commentary: no key yet → settings; an invalid key is rejected, a valid one stored.
+  await page.getByTestId('tab-ai').click();
+  await page.getByTestId('analysis-settings').click();
+  await page.getByTestId('claude-key-input').fill('sk-ant-invalid-key');
+  await page.getByTestId('claude-key-save').click();
+  await page.getByTestId('claude-error').getByText(/ungültig/).waitFor();
+  assert(true, 'an invalid API key is rejected');
+  await page.getByTestId('claude-key-input').fill('sk-ant-test-key-1234');
+  await page.getByTestId('claude-key-save').click();
+  await page.getByTestId('claude-key-status').waitFor();
+  assert((await page.getByTestId('claude-panel').innerText()).includes('Modell: Mock Opus'), 'API key stored, newest Opus model chosen');
+  await page.goBack();
+  await page.getByTestId('analysis-request').click();
+  await page.getByTestId('analysis-result').waitFor({ timeout: 60000 });
+  const request = mock.state.claude.find((c) => c.path === '/v1/messages');
+  assert(request && request.body.model === 'mock-opus-model' && request.body.fallbacks === 'default' && request.body.output_config.format.type === 'json_schema', 'commentary requested with structured output');
+  const promptText = request.body.messages[0].content;
+  assert(promptText.includes('## E1 ') && promptText.includes('Gewählt:') && promptText.includes('[E1] deine Entscheidung'), 'prompt lists the decisions with their options');
+  const analysisText = await page.getByTestId('analysis-result').innerText();
+  assert(analysisText.includes('Mehr Druck in Zug 1') && analysisText.includes('Spiele deine Starter früh aus.'), 'commentary shown');
+  assert(/Engine: (erlaubt|gewinnt)/.test(analysisText), 'suggested move checked by the rules engine');
+  assert(analysisText.includes('passten zu keinem erlaubten Zug'), 'invalid suggestions are filtered out');
+  await page.screenshot({ path: path.join(SHOTS, '33-ai-commentary.png') });
+  await page.goto(`${BASE}/replays`);
+  await page.getByTestId('tab-replays').click();
+  assert((await page.locator('[data-testid^="replay-"]').first().innerText()).includes('KI-Kommentar'), 'the commentary is stored with the replay');
 
   // Puzzles with the real rules: Raigeki lethal, and the AI answers with Ash Blossom.
   await page.goto(`${BASE}/puzzles/sample-raigeki`);

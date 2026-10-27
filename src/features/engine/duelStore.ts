@@ -6,8 +6,9 @@ import { saveReplay, type ReplayMode } from '@/features/replays/repository';
 import { createId } from '@/lib/id';
 
 import { puzzleScript } from './core/puzzleScript';
-import { downloadEngineCards, ensureScripts, type DataProgress } from './data';
-import { getEngineHost, type EngineHost } from './host';
+import { downloadEngineCards, type DataProgress } from './data';
+import type { EngineHost } from './host';
+import { prepareEngine } from './prepare';
 import * as repo from './repository';
 import type { DuelConfig, DuelResult, EngineResponse, FromEngine, LogEntry, Player, Prompt, Snapshot } from './types';
 
@@ -48,26 +49,7 @@ type DuelUiState = {
 
 let host: EngineHost | null = null;
 let unsubscribe: (() => void) | null = null;
-let initializedScripts = -1;
 let startedAt = 0;
-
-/** All passcodes the duel needs scripts for. */
-function duelCodes(config: DuelConfig): number[] {
-  const codes = config.players.flatMap((p) => [...p.main, ...p.extra]);
-  if (config.puzzle) for (const m of config.puzzle.matchAll(/Debug\.AddCard\((\d+),/g)) codes.push(Number(m[1]));
-  return [...new Set(codes)];
-}
-
-function waitFor(h: EngineHost, predicate: (m: FromEngine) => boolean): Promise<FromEngine> {
-  return new Promise((resolve) => {
-    const stop = h.listen((m) => {
-      if (predicate(m)) {
-        stop();
-        resolve(m);
-      }
-    });
-  });
-}
 
 export const useDuel = create<DuelUiState>((set, get) => ({
   status: 'idle',
@@ -89,32 +71,16 @@ export const useDuel = create<DuelUiState>((set, get) => ({
     set({ status: 'preparing', progress: null, error: null, setup, snapshot: null, log: [], prompt: null, thinking: false, result: null, replayId: null, missingScripts: [] });
     const progress = (p: DataProgress) => set({ progress: p });
     try {
-      if ((await repo.engineCardCount()) === 0) await downloadEngineCards(progress);
       if (setup.puzzleState) {
+        if ((await repo.engineCardCount()) === 0) await downloadEngineCards(progress);
         const types = await repo.engineCardsByCode(boardCardIds(setup.puzzleState));
         const config = { ...setup.config, puzzle: puzzleScript(setup.puzzleState, (code) => types.get(code)?.type ?? 0) };
         setup = { ...setup, config };
         set({ setup });
       }
-      const codes = duelCodes(setup.config);
-      const known = await repo.engineCardsByCode(codes);
-      await ensureScripts([...codes, ...[...known.values()].map((c) => c.alias).filter(Boolean)], progress, known);
-
-      host ??= getEngineHost();
-      const scripts = await repo.cachedScripts();
-      if (initializedScripts < 0) {
-        set({ progress: { label: 'Regel-Engine starten', done: 0, total: null } });
-        const ready = waitFor(host, (m) => m.t === 'ready' || m.t === 'error');
-        host.send({ t: 'init', cards: await repo.loadEngineCards(), scripts: [...scripts] });
-        const answer = await ready;
-        if (answer.t === 'error') throw new Error(answer.message);
-        initializedScripts = scripts.size;
-      } else if (scripts.size !== initializedScripts) {
-        host.send({ t: 'scripts', scripts: [...scripts] });
-        initializedScripts = scripts.size;
-      }
-      const [strings, systemStrings] = await Promise.all([repo.engineStrings(codes), repo.loadSystemStrings()]);
-      set({ strings, systemStrings });
+      const prepared = await prepareEngine(setup.config, progress);
+      host = prepared.host;
+      set({ strings: prepared.strings, systemStrings: prepared.systemStrings });
 
       unsubscribe = host.listen((message) => handleMessage(message));
       startedAt = Date.now();

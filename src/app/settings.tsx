@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { useEffect, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { ClaudeKeyPanel } from '@/components/analysis/ClaudeKeyPanel';
 import { CardDbPanel } from '@/components/CardDbPanel';
 import { EngineDataPanel } from '@/components/engine/EngineDataPanel';
 import { AppText } from '@/components/ui/AppText';
@@ -132,6 +133,10 @@ export default function SettingsScreen() {
 
       <Section title="Regel-Engine (KI-Duell)">
         <EngineDataPanel detailed />
+      </Section>
+
+      <Section title="KI-Kommentar (Claude API)">
+        <ClaudeKeyPanel />
       </Section>
 
       <Section title="Über">

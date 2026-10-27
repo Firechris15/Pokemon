@@ -16,6 +16,11 @@ describe('database migrations', () => {
       .map((row: { name: string }) => row.name);
     expect(tables).toEqual(expect.arrayContaining(['cards', 'card_alias', 'decks', 'meta', 'settings', 'deck_card_meta', 'hand_practice', 'combos', 'combo_reviews', 'combo_attempts', 'puzzles', 'puzzle_attempts', 'daily_puzzles', 'engine_cards', 'engine_scripts', 'replays']));
     expect(db.prepare('PRAGMA user_version').get().user_version).toBe(MIGRATIONS.length);
+    const replayColumns = db
+      .prepare('PRAGMA table_info(replays)')
+      .all()
+      .map((row: { name: string }) => row.name);
+    expect(replayColumns).toEqual(expect.arrayContaining(['data', 'stats', 'analysis']));
   });
 
   it('upgrade a version 1 database without losing decks', () => {

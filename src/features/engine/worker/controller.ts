@@ -6,7 +6,8 @@ import { seededRng, type Rng } from '@/lib/random';
 
 import { toOcgCard } from '../core/convert';
 import { DuelSession, type EngineEnv } from '../core/session';
-import type { DuelConfig, FromEngine, LogEntry, Player, ReplayData, ToEngine } from '../types';
+import type { DuelConfig, EngineResponse, FromEngine, LogEntry, Player, ReplayData, Suggestion, ToEngine } from '../types';
+import { checkSuggestion, runReplay, type ReplayRun } from './replay';
 
 export type EngineRuntime = {
   lib: OcgCoreSync;
@@ -45,6 +46,8 @@ export class EngineController {
   private memories = new Map<Player, AiMemory>();
   private rng: Rng = Math.random;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** The replay open in the viewer (independent of a running duel). */
+  private replay: { id: string; config: DuelConfig; responses: EngineResponse[]; viewer: Player; run: ReplayRun } | null = null;
 
   constructor(
     private readonly runtime: EngineRuntime,
@@ -85,10 +88,56 @@ export class EngineController {
         case 'stop':
           this.stop();
           break;
+        case 'replay':
+        case 'frame':
+        case 'verify':
+        case 'closeReplay':
+          this.handleReplay(message);
+          break;
       }
     } catch (error) {
       this.post({ t: 'error', message: error instanceof Error ? error.message : String(error) });
     }
+  }
+
+  private handleReplay(message: Extract<ToEngine, { t: 'replay' | 'frame' | 'verify' | 'closeReplay' }>) {
+    if (message.t === 'closeReplay') {
+      this.replay = null;
+      return;
+    }
+    try {
+      if (!this.env) throw new Error('Die Regel-Engine ist noch nicht bereit.');
+      if (message.t === 'replay') {
+        this.replay = null;
+        const run = runReplay(this.env, message.config, message.responses, message.viewer);
+        this.replay = { id: message.id, config: message.config, responses: message.responses, viewer: message.viewer, run };
+        this.post({ t: 'replayInfo', id: message.id, info: { frames: run.frames, decisions: run.decisions, diverged: run.diverged } });
+        return;
+      }
+      const replay = this.replay;
+      if (!replay || replay.id !== message.id) throw new Error('Das Replay ist nicht geladen.');
+      if (message.t === 'frame') {
+        const index = Math.max(0, Math.min(replay.run.snapshots.length - 1, message.index));
+        this.post({ t: 'frame', id: message.id, index, snapshot: replay.run.snapshots[index] });
+        return;
+      }
+      this.post({ t: 'verified', id: message.id, results: message.suggestions.map((s) => this.verify(s)) });
+    } catch (error) {
+      this.post({ t: 'replayError', id: message.id, message: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  /** Engine check of an alternative move; both players continue with the level 1 AI. */
+  private verify(suggestion: Suggestion) {
+    const replay = this.replay!;
+    const memories = new Map<Player, AiMemory>();
+    const rng = seededRng(Number(BigInt(replay.config.seed[0]) % 2147483647n) + suggestion.decision);
+    const play = (session: DuelSession, player: Player) => {
+      const memory = memories.get(player) ?? newMemory();
+      memories.set(player, memory);
+      return aiRespond({ ...this.context(session, player, false, memory), rng, eager: false }, session.prompt!);
+    };
+    return checkSuggestion(this.env!, replay.config, replay.responses, replay.viewer, replay.run, suggestion, play, this.cardInfo);
   }
 
   private start(config: DuelConfig, viewer: Player, aiThinkMs?: number) {
