@@ -1,8 +1,8 @@
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -12,13 +12,15 @@ import { InstanceSheet } from '@/components/duel/InstanceSheet';
 import { EngineHostView } from '@/features/engine/host';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
-import { DialogHost } from '@/components/ui/dialogs';
+import { confirmDialog, DialogHost } from '@/components/ui/dialogs';
 import { getDb } from '@/db/database';
 import { useCardDb } from '@/features/cards/store';
 import { useCombos } from '@/features/combos/store';
 import { useDecks } from '@/features/decks/store';
+import { useDuel } from '@/features/engine/duelStore';
 import { usePuzzles } from '@/features/puzzles/store';
 import { useSettings } from '@/features/settings/store';
+import { loadBuild, newerBuild } from '@/lib/appUpdate';
 import { colors, spacing } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -36,6 +38,9 @@ const theme = {
 };
 
 async function bootstrap() {
+  // Web: if a newer version was deployed since this page was loaded, load it before anything else.
+  const build = await newerBuild();
+  if (build && loadBuild(build)) return new Promise<void>(() => undefined);
   await getDb();
   await Promise.all([
     useSettings.getState().load(),
@@ -57,6 +62,18 @@ export default function RootLayout() {
 
   useEffect(() => {
     run();
+  }, []);
+
+  // Coming back to the app (e.g. the home-screen app on the iPad): offer a newer version, but never in the middle of a duel.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (next) => {
+      if (next !== 'active') return;
+      const build = await newerBuild();
+      const status = useDuel.getState().status;
+      if (!build || status === 'playing' || status === 'preparing') return;
+      if (await confirmDialog({ title: 'Neue Version verfügbar', message: 'Die App wurde aktualisiert. Jetzt neu laden?', confirmLabel: 'Neu laden' })) loadBuild(build);
+    });
+    return () => subscription.remove();
   }, []);
 
   const retry = () => {
@@ -121,6 +138,20 @@ export default function RootLayout() {
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/** Shown instead of a blank screen when a screen crashes. */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <View style={styles.center} testID="app-error">
+      <AppText variant="title">Da ist etwas schiefgelaufen</AppText>
+      <AppText variant="muted" style={{ textAlign: 'center' }}>
+        {error.message}
+      </AppText>
+      <Button label="Erneut versuchen" variant="primary" onPress={retry} />
+      {Platform.OS === 'web' ? <Button label="App neu laden" icon="refresh" onPress={() => window.location.reload()} /> : null}
+    </View>
   );
 }
 

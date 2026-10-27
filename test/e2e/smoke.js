@@ -387,7 +387,11 @@ const YDK = `#created by test
   // quiz-done navigates back asynchronously; let that finish before loading a new URL.
   await page.waitForURL(/\/combos\/(?!quiz)[^/]+$/);
   await page.goto(`${BASE}/combos`);
+  // Let the app finish starting up: a click on a busy page can register as a long press (card details).
+  await page.waitForLoadState('networkidle');
   await page.locator('[data-testid^="quiz-free-"]').first().click();
+  await page.getByTestId('quiz-card-9674034').locator('[role="button"]').first().waitFor();
+  await page.waitForTimeout(500);
   await page.getByTestId('quiz-card-9674034').locator('[role="button"]').first().click();
   await page.getByTestId('quiz-action-normal_summon').click();
   await page.getByTestId('quiz-check').click();

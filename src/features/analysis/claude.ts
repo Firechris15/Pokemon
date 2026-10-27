@@ -1,5 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
+import type Anthropic from '@anthropic-ai/sdk';
+import type { betaZodOutputFormat as BetaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 
 /** A model the commentary can use (from the Models API, so new models show up without an app update). */
@@ -17,15 +17,35 @@ export type RawAnalysis = z.infer<typeof AnalysisSchema>;
 
 export class AnalysisError extends Error {}
 
+type Sdk = { Anthropic: typeof Anthropic; betaZodOutputFormat: typeof BetaZodOutputFormat };
+let sdk: Promise<Sdk> | null = null;
+
+/**
+ * The SDK is loaded on first use only: Safari before 16.4 cannot parse it
+ * (it contains a regex lookbehind), and the rest of the app must keep working there.
+ */
+async function loadSdk(): Promise<Sdk> {
+  sdk ??= Promise.all([import('@anthropic-ai/sdk'), import('@anthropic-ai/sdk/helpers/beta/zod')]).then(([core, helpers]) => ({
+    Anthropic: core.default,
+    betaZodOutputFormat: helpers.betaZodOutputFormat,
+  }));
+  try {
+    return await sdk;
+  } catch {
+    sdk = null;
+    throw new AnalysisError('Der KI-Kommentar konnte nicht geladen werden. Er braucht Safari 16.4 oder neuer. Bitte die App neu laden oder iPadOS aktualisieren.');
+  }
+}
+
 /**
  * The key belongs to the user and stays on this device; requests go directly
  * from the app to the Claude API (no server in between), hence the browser flag.
  */
-function client(apiKey: string): Anthropic {
+function client({ Anthropic }: Sdk, apiKey: string): Anthropic {
   return new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
 }
 
-function explain(error: unknown): AnalysisError {
+function explain(error: unknown, Anthropic: Sdk['Anthropic']): AnalysisError {
   if (error instanceof AnalysisError) return error;
   if (error instanceof Anthropic.AuthenticationError) return new AnalysisError('Der API-Schlüssel ist ungültig. Bitte in den Einstellungen prüfen.');
   if (error instanceof Anthropic.PermissionDeniedError) return new AnalysisError('Der API-Schlüssel hat keinen Zugriff auf dieses Modell.');
@@ -39,9 +59,10 @@ function explain(error: unknown): AnalysisError {
 
 /** Active models that support structured output and adaptive thinking, newest first. */
 export async function listModels(apiKey: string): Promise<ModelOption[]> {
+  const loaded = await loadSdk();
   try {
     const out: ModelOption[] = [];
-    for await (const m of client(apiKey).models.list({ lifecycle: ['active'] })) {
+    for await (const m of client(loaded, apiKey).models.list({ lifecycle: ['active'] })) {
       const caps = m.capabilities;
       if (caps && (!caps.structured_outputs.supported || !caps.thinking.types.adaptive.supported)) continue;
       out.push({
@@ -55,7 +76,7 @@ export async function listModels(apiKey: string): Promise<ModelOption[]> {
     }
     return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   } catch (error) {
-    throw explain(error);
+    throw explain(error, loaded.Anthropic);
   }
 }
 
@@ -68,15 +89,16 @@ export type AnalysisResult = { analysis: RawAnalysis; model: string; usage: { in
 
 /** One request: duel log and decisions in, structured commentary out. */
 export async function requestAnalysis(apiKey: string, model: ModelOption, system: string, prompt: string): Promise<AnalysisResult> {
+  const loaded = await loadSdk();
   try {
-    const response = await client(apiKey).beta.messages.parse({
+    const response = await client(loaded, apiKey).beta.messages.parse({
       model: model.id,
       max_tokens: Math.min(16000, model.maxTokens),
       // If the model declines for policy reasons, the API retries on its default fallback model.
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       ...(model.adaptive ? { thinking: { type: 'adaptive' as const } } : {}),
-      output_config: { ...(model.effortHigh ? { effort: 'high' as const } : {}), format: betaZodOutputFormat(AnalysisSchema) },
+      output_config: { ...(model.effortHigh ? { effort: 'high' as const } : {}), format: loaded.betaZodOutputFormat(AnalysisSchema) },
       system,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -85,6 +107,6 @@ export async function requestAnalysis(apiKey: string, model: ModelOption, system
     if (!response.parsed_output) throw new AnalysisError('Die Antwort der KI konnte nicht gelesen werden.');
     return { analysis: response.parsed_output, model: response.model, usage: { input: response.usage.input_tokens, output: response.usage.output_tokens } };
   } catch (error) {
-    throw explain(error);
+    throw explain(error, loaded.Anthropic);
   }
 }
