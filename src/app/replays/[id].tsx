@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, useWindowDimensio
 import { DuelBoard } from '@/components/duel/DuelBoard';
 import { afterModal } from '@/components/duel/useDuelActions';
 import { AnalysisView } from '@/components/replays/AnalysisView';
+import { EngineReviewView } from '@/components/replays/EngineReviewView';
 import { MatchStatsView } from '@/components/replays/MatchStatsView';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
@@ -30,7 +31,7 @@ import { useSettings } from '@/features/settings/store';
 import { formatDateTime } from '@/lib/text';
 import { colors, radius, spacing, WIDE_BREAKPOINT } from '@/theme';
 
-type Tab = 'log' | 'stats' | 'ai';
+type Tab = 'log' | 'stats' | 'review' | 'ai';
 
 export default function ReplayScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -225,6 +226,7 @@ function ReplayViewer({ replay }: { replay: Replay }) {
         <View style={styles.tabs}>
           <Chip testID="tab-log" label="Protokoll" selected={tab === 'log'} onPress={() => setTab('log')} />
           <Chip testID="tab-stats" label="Analyse" selected={tab === 'stats'} onPress={() => setTab('stats')} />
+          <Chip testID="tab-review" label="Engine-Analyse" selected={tab === 'review'} onPress={() => setTab('review')} />
           <Chip testID="tab-ai" label="KI-Kommentar" selected={tab === 'ai'} onPress={() => setTab('ai')} />
         </View>
         <ScrollView contentContainerStyle={styles.sideContent}>
@@ -243,6 +245,7 @@ function ReplayViewer({ replay }: { replay: Replay }) {
             </View>
           ) : null}
           {tab === 'stats' ? <MatchStatsView stats={stats} nameOf={nameOf} onTurnPress={gotoTurn} /> : null}
+          {tab === 'review' ? <EngineReviewView replay={replay} info={info} names={{ nameOf, sources }} onShowFrame={(f) => viewerState.goto(f)} /> : null}
           {tab === 'ai' ? (
             <AnalysisView
               replay={replay}
@@ -290,7 +293,7 @@ const styles = StyleSheet.create({
   side: { width: 380, maxWidth: 380, borderLeftWidth: 1, borderLeftColor: colors.border, backgroundColor: colors.surface },
   below: { flex: 1, backgroundColor: colors.surface },
   summary: { padding: spacing.lg, paddingBottom: spacing.sm, gap: 2 },
-  tabs: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   sideContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md },
   log: { gap: 3 },
   fresh: { backgroundColor: 'rgba(129,182,76,0.18)', borderRadius: radius.sm },

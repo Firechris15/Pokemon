@@ -24,6 +24,7 @@ export function OverallStatsView({ stats }: { stats: OverallStats }) {
         <Tile label="Bilanz" value={`${stats.wins} S · ${stats.losses} N${stats.draws ? ` · ${stats.draws} U` : ''}`} />
         <Tile label="Ø Züge" value={stats.avgTurns.toFixed(1).replace('.', ',')} />
         <Tile label="Ø Schaden" value={`${Math.round(stats.avgDamageDealt)} zugefügt · ${Math.round(stats.avgDamageTaken)} erhalten`} />
+        {stats.avgAccuracy !== null ? <Tile label="Ø Genauigkeit" value={`${Math.round(stats.avgAccuracy)} %`} testID="overall-accuracy" /> : null}
         {stats.streak ? <Tile label="Serie" value={`${stats.streak.count} ${stats.streak.count === 1 ? OUTCOME[stats.streak.outcome].label : plural(stats.streak.outcome)} in Folge`} /> : null}
       </View>
 

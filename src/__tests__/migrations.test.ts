@@ -20,7 +20,7 @@ describe('database migrations', () => {
       .prepare('PRAGMA table_info(replays)')
       .all()
       .map((row: { name: string }) => row.name);
-    expect(replayColumns).toEqual(expect.arrayContaining(['data', 'stats', 'analysis']));
+    expect(replayColumns).toEqual(expect.arrayContaining(['data', 'stats', 'analysis', 'review']));
   });
 
   it('upgrade a version 1 database without losing decks', () => {

@@ -6,8 +6,9 @@ import { seededRng, type Rng } from '@/lib/random';
 
 import { toOcgCard } from '../core/convert';
 import { DuelSession, type EngineEnv } from '../core/session';
-import type { DuelConfig, EngineResponse, FromEngine, LogEntry, Player, ReplayData, Suggestion, ToEngine } from '../types';
+import type { DecisionReview, DuelConfig, EngineResponse, FromEngine, LogEntry, Player, ReplayData, Suggestion, ToEngine } from '../types';
 import { checkSuggestion, runReplay, type ReplayRun } from './replay';
+import { reviewDecision, summarize, type PlayFactory } from './review';
 
 export type EngineRuntime = {
   lib: OcgCoreSync;
@@ -91,6 +92,7 @@ export class EngineController {
         case 'replay':
         case 'frame':
         case 'verify':
+        case 'review':
         case 'closeReplay':
           this.handleReplay(message);
           break;
@@ -100,7 +102,7 @@ export class EngineController {
     }
   }
 
-  private handleReplay(message: Extract<ToEngine, { t: 'replay' | 'frame' | 'verify' | 'closeReplay' }>) {
+  private handleReplay(message: Extract<ToEngine, { t: 'replay' | 'frame' | 'verify' | 'review' | 'closeReplay' }>) {
     if (message.t === 'closeReplay') {
       this.replay = null;
       return;
@@ -121,23 +123,63 @@ export class EngineController {
         this.post({ t: 'frame', id: message.id, index, snapshot: replay.run.snapshots[index] });
         return;
       }
+      if (message.t === 'review') {
+        this.review(replay);
+        return;
+      }
       this.post({ t: 'verified', id: message.id, results: message.suggestions.map((s) => this.verify(s)) });
     } catch (error) {
       this.post({ t: 'replayError', id: message.id, message: error instanceof Error ? error.message : String(error) });
     }
   }
 
+  /** Level 1 AI for both players in a simulation; the same seed gives every compared option the same random numbers. */
+  private playFactory(config: DuelConfig, seed: number): PlayFactory {
+    return () => {
+      const memories = new Map<Player, AiMemory>();
+      const rng = seededRng(Number(BigInt(config.seed[0]) % 2147483647n) + seed);
+      return (session: DuelSession, player: Player) => {
+        const memory = memories.get(player) ?? newMemory();
+        memories.set(player, memory);
+        return aiRespond({ ...this.context(session, player, false, memory), rng, eager: false }, session.prompt!);
+      };
+    };
+  }
+
   /** Engine check of an alternative move; both players continue with the level 1 AI. */
   private verify(suggestion: Suggestion) {
     const replay = this.replay!;
-    const memories = new Map<Player, AiMemory>();
-    const rng = seededRng(Number(BigInt(replay.config.seed[0]) % 2147483647n) + suggestion.decision);
-    const play = (session: DuelSession, player: Player) => {
-      const memory = memories.get(player) ?? newMemory();
-      memories.set(player, memory);
-      return aiRespond({ ...this.context(session, player, false, memory), rng, eager: false }, session.prompt!);
-    };
+    const play = this.playFactory(replay.config, suggestion.decision)();
     return checkSuggestion(this.env!, replay.config, replay.responses, replay.viewer, replay.run, suggestion, play, this.cardInfo);
+  }
+
+  /**
+   * Engine review of all the viewer's decisions. Runs in slices so frame
+   * requests of the replay viewer still get answered, and reports progress.
+   */
+  private review(replay: NonNullable<EngineController['replay']>) {
+    const { run } = replay;
+    const decisions = run.decisions.filter((d) => run.diverged === null || d.index < run.diverged);
+    const results: DecisionReview[] = [];
+    let next = 0;
+    const slice = () => {
+      if (this.replay !== replay) return;
+      try {
+        const until = this.runtime.now() + 40;
+        while (next < decisions.length && this.runtime.now() < until) {
+          const d = decisions[next++];
+          const result = reviewDecision(this.env!, replay.config, replay.responses, replay.viewer, d, this.playFactory(replay.config, d.index), this.cardInfo);
+          if (result) results.push(result);
+        }
+      } catch (error) {
+        this.post({ t: 'replayError', id: replay.id, message: error instanceof Error ? error.message : String(error) });
+        return;
+      }
+      this.post({ t: 'reviewProgress', id: replay.id, done: next, total: decisions.length });
+      if (next < decisions.length) setTimeout(slice, 0);
+      else this.post({ t: 'reviewed', id: replay.id, review: summarize(results, run.diverged) });
+    };
+    slice();
   }
 
   private start(config: DuelConfig, viewer: Player, aiThinkMs?: number) {

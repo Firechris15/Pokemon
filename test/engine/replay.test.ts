@@ -9,6 +9,7 @@ import { PRESET_DECKS } from '@/features/engine/presetDecks';
 import type { DuelConfig, EngineResponse, FromEngine, Player, ReplayData, SelectIdleCmd } from '@/features/engine/types';
 import { EngineController } from '@/features/engine/worker/controller';
 import { runReplay } from '@/features/engine/worker/replay';
+import { reviewDecision, reviewOptions, summarize, verdictFor } from '@/features/engine/worker/review';
 import { samplePuzzles } from '@/features/puzzles/samples';
 import { matchStats } from '@/features/replays/stats';
 import { seededRng } from '@/lib/random';
@@ -170,4 +171,102 @@ test('the engine checks suggested moves and plays them out', async () => {
   controller.handle({ t: 'frame', id: 'other', index: 0 });
   assert.equal(messages.at(-1)!.t, 'replayError');
   controller.handle({ t: 'closeReplay' });
+});
+
+test('the engine review rates every decision against the alternatives', async () => {
+  const rt = await loadRuntime();
+  const env = await loadEnv();
+  // Raigeki puzzle: ending the turn instead of playing Raigeki throws the win away.
+  const config = raigekiConfig(env);
+  const session = new DuelSession(env, config);
+  session.respond({ type: Res.SELECT_IDLECMD, action: IdleAction.TO_EP, index: null });
+  const ctx = aiContext(env, session, 1, 3);
+  for (let steps = 0; session.prompt && !session.ended && steps < 200; steps++) {
+    ctx.me = session.prompt.request.player;
+    ctx.snapshot = session.snapshot(ctx.me);
+    session.respond(respond(ctx, session.prompt));
+  }
+  const responses = [...session.responses];
+  session.destroy();
+
+  const { cards } = fixtureCards();
+  const messages: FromEngine[] = [];
+  const controller = new EngineController(rt, (m) => messages.push(m));
+  controller.handle({ t: 'init', cards, scripts: [...fixtureScripts(cards).entries()] });
+  controller.handle({ t: 'replay', id: 'p', config, responses, viewer: 0 });
+  controller.handle({ t: 'review', id: 'p' });
+  for (let i = 0; i < 200 && !messages.some((m) => m.t === 'reviewed' || m.t === 'replayError'); i++) await new Promise((r) => setTimeout(r, 20));
+  const done = messages.find((m) => m.t === 'reviewed');
+  assert.ok(done && done.t === 'reviewed', JSON.stringify(messages.at(-1)));
+  assert.ok(messages.some((m) => m.t === 'reviewProgress'));
+  const first = done.review.decisions[0];
+  assert.equal(first.index, 0);
+  assert.equal(first.verdict, 'blunder', 'ending the turn misses the lethal');
+  assert.equal(first.chosen.outcome.winner, 'opp');
+  assert.equal(first.best?.outcome.winner, 'me');
+  assert.deepEqual(first.best?.response, { type: Res.SELECT_IDLECMD, action: IdleAction.ACTIVATE, index: 0 });
+  assert.ok(done.review.accuracy < 50);
+  assert.equal(done.review.counts.blunder, 1);
+  controller.handle({ t: 'closeReplay' });
+});
+
+test('a full duel review finishes and every decision gets a verdict', async () => {
+  const env = await loadEnv();
+  const { config, responses, session } = recordDuel(env, 13);
+  session.destroy();
+  const run = runReplay(env, config, responses, 0);
+  const card = (code: number) => {
+    const c = env.cards.get(code);
+    return c ? { type: Number(c.type), attack: c.attack, defense: c.defense, level: c.level } : undefined;
+  };
+  const play = () => {
+    const ctx = aiContext(env, new DuelSession(env, config), 0, 9);
+    return (sim: DuelSession, player: Player) => {
+      ctx.me = player;
+      ctx.snapshot = sim.snapshot(player);
+      return respond(ctx, sim.prompt!);
+    };
+  };
+  const started = Date.now();
+  const reviews = run.decisions.map((d) => reviewDecision(env, config, responses, 0, d, play, card)).filter((r) => r !== null);
+  const review = summarize(reviews, run.diverged);
+  const ms = Date.now() - started;
+  assert.equal(reviews.length, run.decisions.filter((d) => reviewOptions(d.request).length > 1).length);
+  assert.equal(Object.values(review.counts).reduce((a, b) => a + b, 0), reviews.length);
+  assert.ok(review.accuracy >= 0 && review.accuracy <= 100);
+  for (const r of reviews) {
+    assert.ok(r.compared >= 1);
+    if (r.best) assert.ok(r.best.outcome.score > r.chosen.outcome.score);
+  }
+  console.log(`# reviewed ${reviews.length} decisions (${run.decisions.reduce((n, d) => n + reviewOptions(d.request).length, 0)} options, ${responses.length} responses) in ${ms} ms, accuracy ${review.accuracy} %`);
+});
+
+test('review verdicts and options', () => {
+  const o = (score: number, winner: 'me' | 'opp' | null = null) => ({ lp: [8000, 8000] as [number, number], field: [0, 0] as [number, number], hand: [0, 0] as [number, number], winner, score });
+  assert.deepEqual(verdictFor(o(0.5), null), { verdict: 'best', loss: 0 });
+  assert.equal(verdictFor(o(0.5), o(0.502)).verdict, 'best');
+  assert.equal(verdictFor(o(0.5), o(0.52)).verdict, 'good');
+  assert.equal(verdictFor(o(0.5), o(0.55)).verdict, 'inaccuracy');
+  assert.equal(verdictFor(o(0.5), o(0.6)).verdict, 'mistake');
+  assert.equal(verdictFor(o(0.5), o(0.75)).verdict, 'blunder');
+  assert.equal(verdictFor(o(0.6), o(1, 'me')).verdict, 'blunder', 'missed lethal');
+  assert.equal(verdictFor(o(0, 'opp'), o(0.3)).verdict, 'blunder', 'lost the duel this turn');
+  const twoCopies = {
+    type: Msg.SELECT_IDLECMD,
+    player: 0,
+    summons: [
+      { code: 5, controller: 0, location: 2, sequence: 0 },
+      { code: 5, controller: 0, location: 2, sequence: 1 },
+    ],
+    special_summons: [],
+    pos_changes: [],
+    monster_sets: [],
+    spell_sets: [],
+    activates: [],
+    to_bp: false,
+    to_ep: true,
+    shuffle: false,
+  } as SelectIdleCmd;
+  assert.equal(reviewOptions(twoCopies).length, 2, 'copies of a card are compared once');
+  assert.equal(summarize([], null).accuracy, 100);
 });

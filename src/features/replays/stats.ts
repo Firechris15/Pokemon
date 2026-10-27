@@ -143,12 +143,14 @@ export type OverallStats = {
   avgTurns: number;
   avgDamageDealt: number;
   avgDamageTaken: number;
+  /** Mean engine-review accuracy of the reviewed duels (null = none reviewed). */
+  avgAccuracy: number | null;
   /** Results oldest → newest (last 20). */
   recent: Outcome[];
   streak: { outcome: Outcome; count: number } | null;
 };
 
-export type StatsInput = ReplaySummary & { stats: MatchStats | null };
+export type StatsInput = ReplaySummary & { stats: MatchStats | null; accuracy?: number | null };
 
 /** Win rate etc. over all AI duels (puzzles are not counted). */
 export function overallStats(replays: StatsInput[]): OverallStats {
@@ -197,6 +199,7 @@ export function overallStats(replays: StatsInput[]): OverallStats {
     avgTurns: avg(duels.map((r) => r.turns)),
     avgDamageDealt: avg(withStats.map((r) => r.stats!.me.damageDealt)),
     avgDamageTaken: avg(withStats.map((r) => r.stats!.opp.damageDealt)),
+    avgAccuracy: duels.some((r) => r.accuracy != null) ? avg(duels.flatMap((r) => (r.accuracy != null ? [r.accuracy] : []))) : null,
     recent: outcomes.slice(-20),
     streak,
   };
