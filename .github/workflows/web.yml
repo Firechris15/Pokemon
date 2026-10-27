@@ -40,6 +40,9 @@ jobs:
         run: npx expo export --platform web --output-dir dist
         env:
           EXPO_NO_TELEMETRY: 1
+          # Built into the app and written to version.json: open pages notice a new deploy and reload.
+          EXPO_PUBLIC_BUILD_ID: ${{ github.sha }}
+      - run: echo '{"build":"${{ github.sha }}"}' > dist/version.json
       # GitHub Pages has no SPA rewrites; 404.html lets deep links load the app.
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v4
