@@ -112,6 +112,7 @@ Erreichbar über die Kachel **Analyse**.
 | Statistik | Über alle Duelle gegen die KI: Anzahl, Siegquote, Bilanz, Ø Züge, Ø Schaden, aktuelle Serie, die letzten 20 Ergebnisse, Siegquote nach eigenem Deck, Deck der KI, KI-Stufe und wer beginnt, und wie die Duelle endeten. Puzzles zählen nicht mit. |
 | Replay-Viewer | Die Regel-Engine spielt das gespeicherte Duell (Startwert + alle Antworten) nach. Das Spielfeld zeigt jeden Schritt; **Abspielen**, Schritt vor/zurück, Anfang/Ende und Sprung zu jedem Zug. Das Protokoll läuft mit (neue Einträge hervorgehoben, Antippen springt zur Stelle). **„Karten des Gegners: sichtbar“** deckt Hand und verdeckte Karten der KI auf. Karten antippen zeigt die Kartendetails, Stapel antippen ihren Inhalt. |
 | Match-Analyse | Reiter **Analyse** im Replay: LP-Verlauf beider Spieler je Zug (Diagramm, Antippen zeigt die Werte und springt zum Zug, auch als Tabelle), Kennzahlen für dich und den Gegner (Schaden, Angriffe, Beschwörungen, gesetzte Karten, Aktivierungen und Annullierungen, gezogene Karten, LP-Kosten), größter Treffer und deine meistgenutzten Karten. |
+| Engine-Analyse | Reiter **Engine-Analyse** (kostenlos, offline, ohne KI): Wie die Partie-Analyse bei Chess.com. Die Regel-Engine spielt bei jeder deiner Entscheidungen jede erlaubte Möglichkeit durch (die gewählte eingeschlossen, Kopien derselben Karte zählen einmal) und lässt danach die KI Stufe 1 beide Seiten bis zum Ende des Zugs spielen. Verglichen werden LP, Feld und Hand. Jede Entscheidung wird als **Bester Zug, Gut, Ungenauigkeit, Fehler** oder **Patzer** bewertet (Patzer: z. B. verpasster Lethal), dazu eine **Genauigkeit** in Prozent. Bei Fehlern steht der bessere Zug mit seinem Zugende daneben; „Im Replay zeigen“ springt zur Stelle. Das Ergebnis wird mit dem Replay gespeichert; Genauigkeit erscheint auch in der Replay-Liste und als Durchschnitt in der Statistik. Grenze: Die Engine schaut nur bis zum Ende des jeweiligen Zugs; längerfristige Pläne erkennt sie nicht. |
 | KI-Kommentar | Reiter **KI-Kommentar**: Claude bekommt den Spielverlauf aus deiner Sicht, dein Deck und alle deine Entscheidungen, jeweils mit Spielfeld und allen Optionen, die die Engine erlaubt hat. Zurück kommen Gesamteinschätzung, Wendepunkte (antippen springt zum Zug), bis zu fünf bessere Züge und Tipps. Der Kommentar wird mit dem Replay gespeichert. |
 | Prüfung durch die Engine | Claude darf bessere Züge nur als eine der erlaubten Optionen einer Entscheidung vorschlagen. Die App spielt jeden Vorschlag in der Regel-Engine nach: Ist er erlaubt, spielt die KI Stufe 1 beide Seiten bis zum Ende dieses Zugs, und die App vergleicht LP, Feld und Hand mit dem echten Duell („besser“, „ähnlich“, „schlechter“, „gewinnt das Duell“). Vorschläge, die zu keiner erlaubten Option passen, werden aussortiert. **Regelaussagen und Rulings im Text kann die KI falsch haben**; geprüft werden nur die Züge. „Im Replay zeigen“ springt zur Entscheidung. |
 
@@ -165,7 +166,7 @@ src/
 │  ├─ duel/                 DuelBoard (Spielfeld, Drag & Drop), Layout/Trefferprüfung, Stapel-/Kartenauswahl, Aktions-Hook
 │  ├─ engine/               Status der Regel-Daten, Dialoge für Anfragen der Engine
 │  ├─ handtrainer/          Reiter des Hand-Trainers, Hand-Anzeige, Tag-Chips, Diagramme
-│  ├─ replays/              LP-Diagramm, Match-Kennzahlen, Gesamtstatistik, KI-Kommentar
+│  ├─ replays/              LP-Diagramm, Match-Kennzahlen, Gesamtstatistik, Engine-Analyse, KI-Kommentar
 │  └─ ui/                   Button, Chip, TextField, Screen, ProgressBar, Dialoge/Toasts
 ├─ db/                      SQLite-Verbindung und Migrationen
 ├─ features/                Fachlogik je Bereich
@@ -175,7 +176,7 @@ src/
 │  ├─ combos/               Combo-Modell, Aktionen, Spielstand-Tracker, Quiz, SM-2-Wiederholung
 │  ├─ duel/                 Duell-Zustand (alle Zonen), Züge, Kampfberechnung, Zug-Builder, Aktionen je Zone
 │  ├─ puzzles/              Lösungsabgleich, Elo-Rating, Tagespuzzle/Serie, Beispiele, Puzzle-Codes, Repository/Store
-│  ├─ engine/               Regel-Engine: core/ (Duell-Sitzung um ocgcore, Puzzle-Skripte), worker/ (läuft im Worker/WebView),
+│  ├─ engine/               Regel-Engine: core/ (Duell-Sitzung um ocgcore, Puzzle-Skripte), worker/ (läuft im Worker/WebView; Replays, Engine-Analyse),
 │  │                        Host (Web Worker bzw. WebView), Kartendaten/Skripte laden, Duell-Store, Spielfeld-Abbildung, Protokoll
 │  ├─ ai/                   KI: Stufe 1 (Regeln) und Stufe 2 (Monte-Carlo-Suche)
 │  ├─ replays/              Replays speichern, Replay-Viewer (Store), Match- und Gesamtstatistik
@@ -328,4 +329,4 @@ Statisch gebaut wird mit `npm run export:web` (→ `dist/`). Online steht die We
 | 3 ✅ | Combo-Trainer: Combo-Routen erfassen, Quiz (Multiple Choice / freie Auswahl), Spaced Repetition |
 | 4 ✅ | Puzzles: Spielfeld mit allen Zonen, Drag & Drop/Pencil, Puzzle-Editor, Lösungsvergleich, Rating, Tagespuzzle |
 | 5 ✅ | Regel-Engine (ocgcore + Lua-Skripte als WebAssembly, AGPL) in eigenem Thread, KI in TypeScript (Stufe 1 regelbasiert, Stufe 2 Monte-Carlo-Suche), Gegner-Decks, Replays, Puzzles mit echten Regeln |
-| 6 ✅ | Match-Analyse: Replay-Viewer, Statistiken, KI-Kommentar über die Claude API (API-Key im iOS-Schlüsselbund, vorgeschlagene Züge von der Engine geprüft) |
+| 6 ✅ | Match-Analyse: Replay-Viewer, Statistiken, Engine-Analyse (ohne KI), KI-Kommentar über die Claude API (API-Key im iOS-Schlüsselbund, vorgeschlagene Züge von der Engine geprüft) |

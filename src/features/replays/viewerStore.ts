@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import type { DataProgress } from '@/features/engine/data';
 import type { EngineHost } from '@/features/engine/host';
 import { prepareEngine } from '@/features/engine/prepare';
-import type { FromEngine, ReplayInfo, Snapshot, Suggestion, SuggestionCheck } from '@/features/engine/types';
+import type { FromEngine, ReplayInfo, ReplayReview, Snapshot, Suggestion, SuggestionCheck } from '@/features/engine/types';
 
 import type { Replay } from './repository';
 
@@ -17,6 +17,8 @@ type ViewerState = {
   /** Revealed snapshot of the current frame (hidden cards are marked). */
   snapshot: Snapshot | null;
   playing: boolean;
+  /** Engine review in progress: decisions done / total. */
+  reviewProgress: { done: number; total: number } | null;
   strings: Map<number, string[]>;
   systemStrings: Map<number, string>;
   open: (replay: Replay) => Promise<void>;
@@ -24,6 +26,8 @@ type ViewerState = {
   step: (delta: number) => void;
   setPlaying: (playing: boolean) => void;
   verify: (suggestions: Suggestion[]) => Promise<SuggestionCheck[]>;
+  /** Rates every decision against its alternatives; null if the engine failed. */
+  review: () => Promise<ReplayReview | null>;
   close: () => void;
 };
 
@@ -36,6 +40,7 @@ let timer: ReturnType<typeof setInterval> | null = null;
 const cache = new Map<number, Snapshot>();
 const requested = new Set<number>();
 const waiting = new Map<string, (results: SuggestionCheck[]) => void>();
+const reviewing = new Map<string, (review: ReplayReview | null) => void>();
 
 function request(id: string, index: number) {
   if (cache.has(index) || requested.has(index) || !host) return;
@@ -58,6 +63,7 @@ export const useReplayViewer = create<ViewerState>((set, get) => ({
   frame: 0,
   snapshot: null,
   playing: false,
+  reviewProgress: null,
   strings: new Map(),
   systemStrings: new Map(),
 
@@ -108,6 +114,19 @@ export const useReplayViewer = create<ViewerState>((set, get) => ({
     });
   },
 
+  review() {
+    const { replay } = get();
+    if (!host || !replay) return Promise.resolve(null);
+    set({ reviewProgress: { done: 0, total: 0 } });
+    return new Promise((resolve) => {
+      reviewing.set(replay.id, (review) => {
+        set({ reviewProgress: null });
+        resolve(review);
+      });
+      host!.send({ t: 'review', id: replay.id });
+    });
+  },
+
   close() {
     stopTimer();
     unsubscribe?.();
@@ -117,7 +136,9 @@ export const useReplayViewer = create<ViewerState>((set, get) => ({
     requested.clear();
     for (const resolve of waiting.values()) resolve([]);
     waiting.clear();
-    set({ status: 'idle', replay: null, info: null, snapshot: null, frame: 0, playing: false, progress: null });
+    for (const resolve of reviewing.values()) resolve(null);
+    reviewing.clear();
+    set({ status: 'idle', replay: null, info: null, snapshot: null, frame: 0, playing: false, progress: null, reviewProgress: null });
   },
 }));
 
@@ -140,10 +161,19 @@ function handleMessage(message: FromEngine) {
       waiting.get(id)?.(message.results);
       waiting.delete(id);
       break;
+    case 'reviewProgress':
+      useReplayViewer.setState({ reviewProgress: { done: message.done, total: message.total } });
+      break;
+    case 'reviewed':
+      reviewing.get(id)?.(message.review);
+      reviewing.delete(id);
+      break;
     case 'replayError':
       if (useReplayViewer.getState().status === 'loading') useReplayViewer.setState({ status: 'error', progress: null, error: message.message });
       waiting.get(id)?.([]);
       waiting.delete(id);
+      reviewing.get(id)?.(null);
+      reviewing.delete(id);
       break;
   }
 }

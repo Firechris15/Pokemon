@@ -56,7 +56,7 @@ export default function ReplaysScreen() {
                       {r.title}
                     </AppText>
                     <AppText variant="small" numberOfLines={1}>
-                      {[formatDateTime(r.createdAt), `${r.turns} Züge`, r.aiLevel ? `KI Stufe ${r.aiLevel}` : null, r.reason, r.analysed ? 'KI-Kommentar' : null]
+                      {[formatDateTime(r.createdAt), `${r.turns} Züge`, r.aiLevel ? `KI Stufe ${r.aiLevel}` : null, r.reason, r.accuracy !== null ? `Genauigkeit ${Math.round(r.accuracy)} %` : null, r.analysed ? 'KI-Kommentar' : null]
                         .filter(Boolean)
                         .join(' · ')}
                     </AppText>

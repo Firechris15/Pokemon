@@ -189,4 +189,8 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE replays ADD COLUMN stats TEXT;
   ALTER TABLE replays ADD COLUMN analysis TEXT;
   `,
+  // v7: engine review (every decision compared with its alternatives)
+  `
+  ALTER TABLE replays ADD COLUMN review TEXT;
+  `,
 ];

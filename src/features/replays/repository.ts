@@ -1,6 +1,6 @@
 import { getDb } from '@/db/database';
 import type { MatchAnalysis } from '@/features/analysis/types';
-import type { Player, ReplayData } from '@/features/engine/types';
+import type { Player, ReplayData, ReplayReview } from '@/features/engine/types';
 
 import { matchStats, type MatchStats } from './stats';
 
@@ -23,9 +23,9 @@ export type ReplaySummary = {
   durationMs: number;
 };
 
-export type Replay = ReplaySummary & { data: ReplayData; stats?: MatchStats | null; analysis?: MatchAnalysis | null };
+export type Replay = ReplaySummary & { data: ReplayData; stats?: MatchStats | null; analysis?: MatchAnalysis | null; review?: ReplayReview | null };
 
-export type ReplayListItem = ReplaySummary & { stats: MatchStats | null; analysed: boolean };
+export type ReplayListItem = ReplaySummary & { stats: MatchStats | null; analysed: boolean; /** Engine review accuracy 0…100, null = not reviewed. */ accuracy: number | null };
 
 type Row = {
   id: string;
@@ -42,9 +42,10 @@ type Row = {
   data: string;
   stats: string | null;
   analysis: string | null;
+  review: string | null;
 };
 
-function toSummary(row: Omit<Row, 'data' | 'stats' | 'analysis'>, viewer: Player): ReplaySummary {
+function toSummary(row: Omit<Row, 'data' | 'stats' | 'analysis' | 'review'>, viewer: Player): ReplaySummary {
   return {
     id: row.id,
     createdAt: row.created_at,
@@ -96,9 +97,10 @@ export async function saveReplay(replay: Replay): Promise<void> {
 /** Newest first, with key figures; replays from before the statistics get them computed once. */
 export async function listReplays(): Promise<ReplayListItem[]> {
   const db = await getDb();
-  const rows = await db.getAllAsync<Omit<Row, 'data' | 'analysis'> & { viewer: number | null; analysed: number }>(
+  const rows = await db.getAllAsync<Omit<Row, 'data' | 'analysis' | 'review'> & { viewer: number | null; analysed: number; accuracy: number | null }>(
     `SELECT id, created_at, mode, title, my_deck, opp_deck, ai_level, winner, reason, turns, duration_ms, stats,
-       json_extract(data, '$.viewer') AS viewer, analysis IS NOT NULL AS analysed FROM replays ORDER BY created_at DESC`
+       json_extract(data, '$.viewer') AS viewer, analysis IS NOT NULL AS analysed, json_extract(review, '$.accuracy') AS accuracy
+     FROM replays ORDER BY created_at DESC`
   );
   const items: ReplayListItem[] = [];
   for (const row of rows) {
@@ -111,7 +113,7 @@ export async function listReplays(): Promise<ReplayListItem[]> {
         await db.runAsync('UPDATE replays SET stats = ? WHERE id = ?', JSON.stringify(stats), row.id);
       }
     }
-    items.push({ ...summary, stats, analysed: Boolean(row.analysed) });
+    items.push({ ...summary, stats, analysed: Boolean(row.analysed), accuracy: row.accuracy ?? null });
   }
   return items;
 }
@@ -121,12 +123,17 @@ export async function getReplay(id: string): Promise<Replay | null> {
   const row = await db.getFirstAsync<Row>('SELECT * FROM replays WHERE id = ?', id);
   if (!row) return null;
   const data = JSON.parse(row.data) as ReplayData & { viewer?: Player };
-  return { ...toSummary(row, data.viewer ?? 0), data, stats: parse<MatchStats>(row.stats), analysis: parse<MatchAnalysis>(row.analysis) };
+  return { ...toSummary(row, data.viewer ?? 0), data, stats: parse<MatchStats>(row.stats), analysis: parse<MatchAnalysis>(row.analysis), review: parse<ReplayReview>(row.review) };
 }
 
 export async function saveAnalysis(id: string, analysis: MatchAnalysis | null): Promise<void> {
   const db = await getDb();
   await db.runAsync('UPDATE replays SET analysis = ? WHERE id = ?', analysis ? JSON.stringify(analysis) : null, id);
+}
+
+export async function saveReview(id: string, review: ReplayReview | null): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('UPDATE replays SET review = ? WHERE id = ?', review ? JSON.stringify(review) : null, id);
 }
 
 export async function deleteReplay(id: string): Promise<void> {

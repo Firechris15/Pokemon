@@ -212,7 +212,8 @@ describe('match statistics', () => {
     const base: ReplaySummary = { id: '', createdAt: 0, mode: 'ai', title: '', myDeck: 'A', oppDeck: 'X', aiLevel: 1, winner: 0, viewer: 0, reason: 'Lebenspunkte auf 0', turns: 4, durationMs: 0 };
     const stats = (first: 'me' | 'opp', dealt: number): MatchStats => ({ ...matchStats(data([]), 0), firstPlayer: first, me: { ...matchStats(data([]), 0).me, damageDealt: dealt } });
     const replays = [
-      { ...base, id: '1', createdAt: 1, stats: stats('me', 8000) },
+      { ...base, id: '1', createdAt: 1, stats: stats('me', 8000), accuracy: 90 },
+      { ...base, id: '1b', createdAt: 1.5, mode: 'puzzle' as const, stats: null, accuracy: 10 },
       { ...base, id: '2', createdAt: 2, winner: 1 as const, myDeck: 'B', aiLevel: 2, stats: stats('opp', 2000) },
       { ...base, id: '3', createdAt: 3, stats: stats('me', 8000), turns: 6 },
       { ...base, id: '4', createdAt: 4, stats: stats('opp', 6000) },
@@ -228,6 +229,8 @@ describe('match statistics', () => {
     expect(overall.byStart.find((g) => g.key === 'me')).toMatchObject({ games: 2, wins: 2, label: 'Du beginnst' });
     expect(overall.reasons).toEqual([{ reason: 'Lebenspunkte auf 0', wins: 3, losses: 1 }]);
     expect(winRate(overall)).toBe(0.75);
+    expect(overall.avgAccuracy).toBe(90);
+    expect(overallStats([{ ...base, stats: null }]).avgAccuracy).toBeNull();
     expect(winRate({ games: 0, wins: 0, draws: 0 })).toBeNull();
     expect(outcomeOf({ winner: null, viewer: 0 })).toBe('D');
   });

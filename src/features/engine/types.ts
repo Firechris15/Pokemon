@@ -282,6 +282,34 @@ export type SuggestionCheck =
   | { status: 'unknown'; reason: string }
   | { status: 'ok'; turn: number; actual: Outcome; alternative: Outcome };
 
+/** Engine review of one decision: the chosen answer and the best alternative, both played on by the level 1 AI. */
+export type ReviewVerdict = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
+
+export type DecisionReview = {
+  /** Index into the replay's responses (matches DecisionPoint.index). */
+  index: number;
+  frame: number;
+  turn: number;
+  verdict: ReviewVerdict;
+  /** Evaluation lost against the best option (0 … 1). */
+  loss: number;
+  /** Options played through (including the chosen one). */
+  compared: number;
+  chosen: { response: EngineResponse; outcome: Outcome };
+  /** Clearly better alternative (only for inaccuracies, mistakes and blunders). */
+  best: { response: EngineResponse; outcome: Outcome } | null;
+};
+
+export type ReplayReview = {
+  version: 1;
+  createdAt: number;
+  decisions: DecisionReview[];
+  counts: Record<ReviewVerdict, number>;
+  /** 0 … 100 */
+  accuracy: number;
+  diverged: number | null;
+};
+
 // ---- Worker protocol -------------------------------------------------------------
 
 export type ToEngine =
@@ -294,6 +322,7 @@ export type ToEngine =
   | { t: 'replay'; id: string; config: DuelConfig; responses: EngineResponse[]; viewer: Player }
   | { t: 'frame'; id: string; index: number }
   | { t: 'verify'; id: string; suggestions: Suggestion[] }
+  | { t: 'review'; id: string }
   | { t: 'closeReplay' };
 
 export type FromEngine =
@@ -313,4 +342,6 @@ export type FromEngine =
   /** Revealed snapshot (hidden cards marked) of one replay frame. */
   | { t: 'frame'; id: string; index: number; snapshot: Snapshot }
   | { t: 'verified'; id: string; results: SuggestionCheck[] }
+  | { t: 'reviewProgress'; id: string; done: number; total: number }
+  | { t: 'reviewed'; id: string; review: ReplayReview }
   | { t: 'replayError'; id: string; message: string };

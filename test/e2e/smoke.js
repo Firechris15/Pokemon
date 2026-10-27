@@ -698,6 +698,16 @@ const YDK = `#created by test
   assert((await page.getByTestId('lp-table').innerText()).includes('Start'), 'LP per turn as a table');
   await page.screenshot({ path: path.join(SHOTS, '32-match-stats.png') });
 
+  // Engine review (free, offline): every decision against its alternatives.
+  await page.getByTestId('tab-review').click();
+  await page.getByTestId('review-start').click();
+  await page.getByTestId('review-result').waitFor({ timeout: 180000 });
+  const reviewText = await page.getByTestId('review-result').innerText();
+  assert(/GENAUIGKEIT\n\d+ %/i.test(reviewText) && reviewText.includes('Entscheidungen geprüft'), 'engine review rates the decisions: ' + reviewText.split('\n').slice(0, 3).join(' '));
+  await page.getByTestId('review-show-all').click();
+  assert((await page.locator('[data-testid^="review-decision-"]').count()) > 0, 'every reviewed decision can be listed');
+  await page.screenshot({ path: path.join(SHOTS, '33-engine-review.png') });
+
   // AI commentary: no key yet → settings; an invalid key is rejected, a valid one stored.
   await page.getByTestId('tab-ai').click();
   await page.getByTestId('analysis-settings').click();
@@ -720,10 +730,13 @@ const YDK = `#created by test
   assert(analysisText.includes('Mehr Druck in Zug 1') && analysisText.includes('Spiele deine Starter früh aus.'), 'commentary shown');
   assert(/Engine: (erlaubt|gewinnt)/.test(analysisText), 'suggested move checked by the rules engine');
   assert(analysisText.includes('passten zu keinem erlaubten Zug'), 'invalid suggestions are filtered out');
-  await page.screenshot({ path: path.join(SHOTS, '33-ai-commentary.png') });
+  await page.screenshot({ path: path.join(SHOTS, '34-ai-commentary.png') });
   await page.goto(`${BASE}/replays`);
   await page.getByTestId('tab-replays').click();
-  assert((await page.locator('[data-testid^="replay-"]').first().innerText()).includes('KI-Kommentar'), 'the commentary is stored with the replay');
+  const listed = await page.locator('[data-testid^="replay-"]').first().innerText();
+  assert(listed.includes('KI-Kommentar') && /Genauigkeit \d+ %/.test(listed), 'commentary and engine review are stored with the replay');
+  await page.getByTestId('tab-overall').click();
+  assert(/Ø GENAUIGKEIT\n\d+ %/i.test(await page.getByTestId('overall-stats').innerText()), 'average accuracy in the statistics');
 
   // Puzzles with the real rules: Raigeki lethal, and the AI answers with Ash Blossom.
   await page.goto(`${BASE}/puzzles/sample-raigeki`);
