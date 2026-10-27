@@ -21,6 +21,7 @@ import { useDuel } from '@/features/engine/duelStore';
 import { usePuzzles } from '@/features/puzzles/store';
 import { useSettings } from '@/features/settings/store';
 import { loadBuild, newerBuild } from '@/lib/appUpdate';
+import { afterUpdateReload, canReloadPage, reloadPage, retryWithReload, startupSucceeded } from '@/lib/pageReload';
 import { colors, spacing } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -41,6 +42,7 @@ async function bootstrap() {
   // Web: if a newer version was deployed since this page was loaded, load it before anything else.
   const build = await newerBuild();
   if (build && loadBuild(build)) return new Promise<void>(() => undefined);
+  await afterUpdateReload();
   await getDb();
   await Promise.all([
     useSettings.getState().load(),
@@ -52,12 +54,19 @@ async function bootstrap() {
 }
 
 export default function RootLayout() {
-  const [state, setState] = useState<'loading' | 'ready' | { error: string }>('loading');
+  const [state, setState] = useState<'loading' | 'retrying' | 'ready' | { error: string }>('loading');
 
   const run = () =>
     bootstrap()
-      .then(() => setState('ready'))
-      .catch((error) => setState({ error: error instanceof Error ? error.message : String(error) }))
+      .then(() => {
+        startupSucceeded();
+        setState('ready');
+      })
+      .catch((error) => {
+        // Web: a fresh page usually gets the database once the previous one has let go of it.
+        if (retryWithReload()) setState('retrying');
+        else setState({ error: error instanceof Error ? error.message : String(error) });
+      })
       .finally(() => SplashScreen.hideAsync().catch(() => undefined));
 
   useEffect(() => {
@@ -122,17 +131,28 @@ export default function RootLayout() {
               <CardDetailModal />
               <DialogHost />
             </>
-          ) : state === 'loading' ? (
+          ) : state === 'loading' || state === 'retrying' ? (
             <View style={styles.center}>
               <ActivityIndicator color={colors.primary} size="large" />
+              {state === 'retrying' ? <AppText variant="muted">Datenbank wird geöffnet …</AppText> : null}
             </View>
           ) : (
-            <View style={styles.center}>
+            <View style={styles.center} testID="startup-error">
               <AppText variant="title">Datenbank konnte nicht geöffnet werden</AppText>
               <AppText variant="muted" style={{ textAlign: 'center' }}>
                 {state.error}
               </AppText>
-              <Button label="Erneut versuchen" variant="primary" onPress={retry} />
+              {canReloadPage ? (
+                <>
+                  <AppText style={{ textAlign: 'center' }}>
+                    Deine Daten sind noch da. Wahrscheinlich ist die App noch in einem anderen Fenster oder Tab geöffnet – dort schließen. Auf dem iPad: die App ganz
+                    schließen (in der App-Übersicht nach oben wischen) und neu öffnen.
+                  </AppText>
+                  <Button testID="startup-reload" label="App neu laden" icon="refresh" variant="primary" onPress={reloadPage} />
+                </>
+              ) : (
+                <Button label="Erneut versuchen" variant="primary" onPress={retry} />
+              )}
             </View>
           )}
         </ThemeProvider>
