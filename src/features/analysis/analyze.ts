@@ -38,7 +38,8 @@ export async function analyzeReplay(params: {
   return {
     createdAt: Date.now(),
     model: result.model,
-    modelName: model.name,
+    // A different model here means the API answered with its fallback model.
+    modelName: result.model === model.id ? model.name : `${model.name} → Ersatzmodell ${result.model}`,
     usage: result.usage,
     summary: result.analysis.summary,
     turningPoints: result.analysis.turning_points.map((t) => ({ turn: Math.round(t.turn), text: t.text })),

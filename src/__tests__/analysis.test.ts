@@ -125,6 +125,15 @@ describe('analysis prompt', () => {
     expect(prompt).toContain('Ergebnis: Verloren (Lebenspunkte auf 0) nach 1 Zügen · Du hast begonnen');
   });
 
+  it('treats copies of the same card as one option', () => {
+    const twoCopies = { ...idle, summons: [idle.summons[0], { ...idle.summons[0], sequence: 2 }] } as SelectRequest;
+    const copies: ReplayInfo = { ...info, decisions: [decision(0, twoCopies, { type: Res.SELECT_IDLECMD, action: IdleAction.SUMMON, index: 1 }, 0)] };
+    const [d] = prepareDecisions(copies, names);
+    expect(d.options.filter((o) => o.label === 'Normalbeschwörung: Drache')).toHaveLength(1);
+    expect(d.chosen).toBe(0);
+    expect(mapSuggestions([{ decision: 1, option: 1, reason: 'die andere Kopie' }], [d])).toEqual({ suggestions: [], invalid: 1 });
+  });
+
   it('maps suggestions to engine responses and drops invalid references', () => {
     const decisions = prepareDecisions(info, names);
     const { suggestions, invalid } = mapSuggestions(

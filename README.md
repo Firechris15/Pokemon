@@ -1,7 +1,7 @@
 # YGO Trainer
 
 Private Yu-Gi-Oh!-Trainings-App im Stil von Chess.com: Decks, Hand-Trainer, Combos, Puzzles, KI-Duell und Analyse.
-Hauptgerät ist das **iPad** (Querformat). Die App läuft dort **vollständig offline**, ohne PC und ohne Server.
+Hauptgerät ist das **iPad** (Querformat). Die App läuft dort **vollständig offline**, ohne PC und ohne Server. Nur der optionale KI-Kommentar zu Replays braucht Internet (Claude API).
 Zusätzlich läuft sie auf dem iPhone und im Browser (Expo Web).
 
 > Nur für die private Nutzung. Kartendaten und -bilder stammen von der [YGOPRODeck-API](https://ygoprodeck.com/api-guide/).
@@ -76,7 +76,7 @@ Erreichbar über die Kachel **KI-Duell**. Jede Aktion prüft die echte Regel-Eng
 | Protokoll | Alle Ereignisse auf Deutsch (Ziehen, Beschwörungen, Ketten, Annullierungen, Angriffe, Schaden). Gezogene und gesetzte Karten des Gegners bleiben verborgen. |
 | KI Stufe 1 | Regelbasiert: beschwört die stärksten Monster, aktiviert Effekte, setzt Fallen, greift an, wenn es sich lohnt, und setzt Handtraps auf passende Auslöser ein. |
 | KI Stufe 2 | Monte-Carlo-Suche (UCB1): Bei jeder Hauptphasen- und Kampfentscheidung spielt die KI die erlaubten Züge in Kopien des Duells bis zum Zugende durch (Stufe 1 als Spielweise), bewertet LP, Feld und Karten und wählt den besten Zug. Sie denkt dafür bis zu 1,5 Sekunden nach. Findet z. B. tödliche Züge wie Raigeki + Angriff. |
-| Replays | Jedes Duell wird mit dem vollständigen Aktionsprotokoll lokal gespeichert (Startwert, Decks und alle Antworten an die Engine, damit lässt es sich exakt nachspielen). Liste und Protokoll unter **Replays**; der Replay-Viewer mit Spielfeld kommt mit Phase 6. |
+| Replays | Jedes Duell wird mit dem vollständigen Aktionsprotokoll lokal gespeichert (Startwert, Decks und alle Antworten an die Engine, damit lässt es sich exakt nachspielen). Ansehen, Statistik und KI-Kommentar unter **Analyse** (Phase 6). |
 | Puzzles mit Regeln | Im Puzzle **„Mit echten Regeln spielen“**: Die Ausgangslage wird als EDOPro-Puzzle-Skript an die Engine übergeben (inkl. Xyz-Material und Extra-Monster-Zonen). Die KI spielt die Karten des Gegners (z. B. Ash Blossom). Gelöst ist das Puzzle, wenn der Gegner in diesem Zug auf 0 LP fällt. |
 
 ### Regel-Engine: WebAssembly statt nativem C++
@@ -103,6 +103,31 @@ ocgcore, die Kartenskripte (CardScripts) und die Regel-Datenbank (BabelCDB) von 
 
 Grenzen: Die Kartennamen und -texte im Duell kommen aus der YGOPRODeck-Datenbank der App; die Effekttexte in den Aktionsmenüs sind die (englischen) Texte aus EDOPro. Die KI spielt solide, aber nicht auf Turnierniveau: Stufe 2 schaut nur bis zum Ende des eigenen Zugs voraus.
 
+## Stand: Phase 6 – Match-Analyse ✅
+
+Erreichbar über die Kachel **Analyse**.
+
+| Bereich | Inhalt |
+| --- | --- |
+| Statistik | Über alle Duelle gegen die KI: Anzahl, Siegquote, Bilanz, Ø Züge, Ø Schaden, aktuelle Serie, die letzten 20 Ergebnisse, Siegquote nach eigenem Deck, Deck der KI, KI-Stufe und wer beginnt, und wie die Duelle endeten. Puzzles zählen nicht mit. |
+| Replay-Viewer | Die Regel-Engine spielt das gespeicherte Duell (Startwert + alle Antworten) nach. Das Spielfeld zeigt jeden Schritt; **Abspielen**, Schritt vor/zurück, Anfang/Ende und Sprung zu jedem Zug. Das Protokoll läuft mit (neue Einträge hervorgehoben, Antippen springt zur Stelle). **„Karten des Gegners: sichtbar“** deckt Hand und verdeckte Karten der KI auf. Karten antippen zeigt die Kartendetails, Stapel antippen ihren Inhalt. |
+| Match-Analyse | Reiter **Analyse** im Replay: LP-Verlauf beider Spieler je Zug (Diagramm, Antippen zeigt die Werte und springt zum Zug, auch als Tabelle), Kennzahlen für dich und den Gegner (Schaden, Angriffe, Beschwörungen, gesetzte Karten, Aktivierungen und Annullierungen, gezogene Karten, LP-Kosten), größter Treffer und deine meistgenutzten Karten. |
+| KI-Kommentar | Reiter **KI-Kommentar**: Claude bekommt den Spielverlauf aus deiner Sicht, dein Deck und alle deine Entscheidungen, jeweils mit Spielfeld und allen Optionen, die die Engine erlaubt hat. Zurück kommen Gesamteinschätzung, Wendepunkte (antippen springt zum Zug), bis zu fünf bessere Züge und Tipps. Der Kommentar wird mit dem Replay gespeichert. |
+| Prüfung durch die Engine | Claude darf bessere Züge nur als eine der erlaubten Optionen einer Entscheidung vorschlagen. Die App spielt jeden Vorschlag in der Regel-Engine nach: Ist er erlaubt, spielt die KI Stufe 1 beide Seiten bis zum Ende dieses Zugs, und die App vergleicht LP, Feld und Hand mit dem echten Duell („besser“, „ähnlich“, „schlechter“, „gewinnt das Duell“). Vorschläge, die zu keiner erlaubten Option passen, werden aussortiert. **Regelaussagen und Rulings im Text kann die KI falsch haben**; geprüft werden nur die Züge. „Im Replay zeigen“ springt zur Entscheidung. |
+
+### KI-Kommentar einrichten (Claude API)
+
+1. Auf <https://console.anthropic.com> ein Konto anlegen, Guthaben aufladen und unter *API Keys* einen Schlüssel erzeugen.
+2. In der App: **Einstellungen → KI-Kommentar (Claude API)** → Schlüssel einfügen → **Prüfen und speichern**. Die App prüft den Schlüssel über die (kostenlose) Modellliste.
+3. Optional **Modell wählen**: Die Liste kommt live von der Models API (nur Modelle mit strukturierter Ausgabe und adaptivem Denken). Ohne Auswahl nimmt die App das neueste Opus-Modell.
+
+- **Speicherort des Schlüssels:** auf dem iPad im **iOS-Schlüsselbund** (`expo-secure-store`, nur auf diesem Gerät, nur entsperrt lesbar), nie in der Datenbank. Im Browser gibt es keinen Schlüsselbund; dort liegt er im lokalen Speicher dieses Browsers.
+- **Datenfluss:** Die App ruft die Claude API direkt auf, ohne eigenen Server. Gesendet werden nur Spielverlauf, dein Deck, die Namen der Decks und deine Entscheidungen. Verdeckte Karten des Gegners bleiben verdeckt.
+- **Kosten:** eine Anfrage pro Analyse über deinen Schlüssel, je nach Modell und Duell-Länge meist ein paar Cent. Verbrauch (Tokens) und Modell stehen unter dem Kommentar.
+- **Technik:** offizielles TypeScript-SDK (`@anthropic-ai/sdk`), strukturierte Antwort (JSON-Schema über zod), adaptives Denken mit Aufwand `high`. Lehnt das Modell eine Anfrage aus Richtlinien-Gründen ab, wiederholt die API sie mit ihrem Standard-Ersatzmodell (`fallbacks: "default"`).
+
+Hinweis zur iPad-App (TestFlight): Phase 6 bringt neue native Module (`expo-secure-store` für den Schlüsselbund, `react-native-svg` für das Diagramm). Dafür ist ein **neuer Build** nötig (`npm run build:prod`, dann `npm run submit:ios`). Die Web-Version aktualisiert sich wie bisher von selbst.
+
 ## Tech-Stack
 
 - **React Native 0.88 + Expo SDK 58**, TypeScript, Expo Router (dateibasierte Navigation)
@@ -110,6 +135,7 @@ Grenzen: Die Kartennamen und -texte im Duell kommen aus der YGOPRODeck-Datenbank
 - **Zustand** für den State, **expo-sqlite** für alle lokalen Daten (auf iOS eine Datei, im Browser OPFS)
 - **expo-file-system** für den Bild-Cache, **expo-image** für die Anzeige
 - **react-native-gesture-handler 3** und **Reanimated 4** für Gesten (Wischen in der Detailansicht, Drag & Drop auf dem Spielfeld, Trefferprüfung auf dem UI-Thread)
+- **@anthropic-ai/sdk** (Claude API, strukturierte Antworten mit **zod**), **expo-secure-store** (iOS-Schlüsselbund), **react-native-svg** (Diagramme)
 - **ocgcore** (EDOPro-Regelkern) als **WebAssembly** (`ocgcore-wasm`) im Web Worker bzw. in einer unsichtbaren WebView (`react-native-webview`), gebündelt mit **esbuild**
 - **EAS Build + EAS Submit** für iOS-Builds in der Cloud und die Installation über TestFlight, ohne Mac
 
@@ -131,16 +157,18 @@ src/
 │  ├─ combos/               index (Liste) · [id] (Editor) · quiz/[id] · review (fällige Combos)
 │  ├─ puzzles/              index (Rating, Tagespuzzle, Liste) · [id] (Lösen) · edit/[id] (Editor)
 │  ├─ duel/                 index (Duell einrichten) · play (Duell gegen die KI)
-│  └─ replays/              index (Liste) · [id] (Protokoll)
+│  └─ replays/              index (Analyse: Statistik, Replay-Liste) · [id] (Replay-Viewer mit Analyse und KI-Kommentar)
 ├─ components/              Wiederverwendbare UI
+│  ├─ analysis/             Claude-API-Schlüssel und Modellwahl (Einstellungen)
 │  ├─ cards/                CardImage, CardTile, CardListItem, CardDetailModal, CardSearchPanel, CardPickerModal, BanBadge
 │  ├─ combos/               ComboQuiz, StepEditor, StepRow, ZoneBoard
 │  ├─ duel/                 DuelBoard (Spielfeld, Drag & Drop), Layout/Trefferprüfung, Stapel-/Kartenauswahl, Aktions-Hook
 │  ├─ engine/               Status der Regel-Daten, Dialoge für Anfragen der Engine
 │  ├─ handtrainer/          Reiter des Hand-Trainers, Hand-Anzeige, Tag-Chips, Diagramme
+│  ├─ replays/              LP-Diagramm, Match-Kennzahlen, Gesamtstatistik, KI-Kommentar
 │  └─ ui/                   Button, Chip, TextField, Screen, ProgressBar, Dialoge/Toasts
 ├─ db/                      SQLite-Verbindung und Migrationen
-├─ features/                Fachlogik je Bereich (später auch analysis/)
+├─ features/                Fachlogik je Bereich
 │  ├─ cards/                YGOPRODeck-Client, Sync, Repository/Suche, Bild-Cache, Labels (Deutsch)
 │  ├─ decks/                Store, Repository, YDK/ydke-Parser, Import, Export, Validierung, Sortierung
 │  ├─ handtrainer/          Tags, Wahrscheinlichkeit (exakt + Simulation), Hand-Bewertung, Übungsverlauf
@@ -150,16 +178,17 @@ src/
 │  ├─ engine/               Regel-Engine: core/ (Duell-Sitzung um ocgcore, Puzzle-Skripte), worker/ (läuft im Worker/WebView),
 │  │                        Host (Web Worker bzw. WebView), Kartendaten/Skripte laden, Duell-Store, Spielfeld-Abbildung, Protokoll
 │  ├─ ai/                   KI: Stufe 1 (Regeln) und Stufe 2 (Monte-Carlo-Suche)
-│  ├─ replays/              Replays speichern und anzeigen
+│  ├─ replays/              Replays speichern, Replay-Viewer (Store), Match- und Gesamtstatistik
+│  ├─ analysis/             KI-Kommentar: Optionen je Entscheidung, Prompt, Claude-API-Aufruf, Schlüssel-Speicher
 │  └─ settings/             Einstellungen
 ├─ lib/                     Rate-Limiter/Queue, Text-Helfer, Base64
 ├─ theme/                   Farben, Abstände, Kartenrahmen-Farben
-└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter, Wahrscheinlichkeiten, Übungsauswertung, Combos/SM-2, Duell/Puzzles, Engine-Daten/Spielfeld/Protokoll, Migrationen)
+└─ __tests__/               Jest-Tests (Parser, Validierung, Mapping, SQL-Suche, Rate-Limiter, Wahrscheinlichkeiten, Übungsauswertung, Combos/SM-2, Duell/Puzzles, Engine-Daten/Spielfeld/Protokoll, Analyse/Statistik, Migrationen)
 scripts/                    Engine-Bundle bauen, Engine-Tests ausführen, Engine-Testdaten erzeugen
 test/
 ├─ fixtures/                Beispiel-Antworten der YGOPRODeck-API (inkl. Karten der Beispiel-Puzzles); engine/: kleine Regel-Datenbank und Skripte
-├─ engine/                  Tests der echten Engine (Node): Duelle, Puzzles, KI, Replays
-└─ e2e/                     Web-Smoketest mit Playwright (simulierte APIs, inkl. KI-Duell und Puzzles mit Regeln)
+├─ engine/                  Tests der echten Engine (Node): Duelle, Puzzles, KI, Replays, Prüfung vorgeschlagener Züge
+└─ e2e/                     Web-Smoketest mit Playwright (simulierte APIs inkl. Claude API: KI-Duell, Puzzles mit Regeln, Replay-Viewer, KI-Kommentar)
 ```
 
 Plattformspezifischer Code liegt in `*.web.ts`-Dateien (z. B. `imageBackend.web.ts`: Cache Storage statt Dateisystem).
@@ -299,4 +328,4 @@ Statisch gebaut wird mit `npm run export:web` (→ `dist/`). Online steht die We
 | 3 ✅ | Combo-Trainer: Combo-Routen erfassen, Quiz (Multiple Choice / freie Auswahl), Spaced Repetition |
 | 4 ✅ | Puzzles: Spielfeld mit allen Zonen, Drag & Drop/Pencil, Puzzle-Editor, Lösungsvergleich, Rating, Tagespuzzle |
 | 5 ✅ | Regel-Engine (ocgcore + Lua-Skripte als WebAssembly, AGPL) in eigenem Thread, KI in TypeScript (Stufe 1 regelbasiert, Stufe 2 Monte-Carlo-Suche), Gegner-Decks, Replays, Puzzles mit echten Regeln |
-| 6 | Match-Analyse: Replay-Viewer, Statistiken, KI-Kommentar über die Claude API (API-Key im iOS-Schlüsselbund) |
+| 6 ✅ | Match-Analyse: Replay-Viewer, Statistiken, KI-Kommentar über die Claude API (API-Key im iOS-Schlüsselbund, vorgeschlagene Züge von der Engine geprüft) |

@@ -63,9 +63,12 @@ export function prepareDecisions(info: ReplayInfo, names: Names): PreparedDecisi
   }
   const out: PreparedDecision[] = [];
   for (const point of points) {
-    const options = decisionOptions(point.request, names);
+    const all = decisionOptions(point.request, names);
+    // Copies of the same card give identical options (e.g. two Ash Blossom in hand): keep one of each.
+    const options = all.filter((o, i) => all.findIndex((x) => x.label === o.label) === i);
     if (options.length < 2) continue;
-    out.push({ number: out.length + 1, point, options, chosen: options.findIndex((o) => sameResponse(o.response, point.response)) });
+    const played = all.find((o) => sameResponse(o.response, point.response));
+    out.push({ number: out.length + 1, point, options, chosen: played ? options.findIndex((o) => o.label === played.label) : -1 });
   }
   return out;
 }
